@@ -1,10 +1,20 @@
 
-.outerbox {
-    max-width: 400px;
-    margin: 20px auto;
-    padding: 20px;
-    border: 1px solid #ccc;
-}
+.App{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+  }
+  
+  .outerbox {
+    width: 400px;
+    height: 400px;
+    padding: 50px;
+    border: 2px solid #ccc;
+    background: rgb(214, 13, 13);
+    border-radius: 10px;
+  }
 .snoppy h1,h2 {
     font-family: 'Barriecito', cursive;
     text-align: center;
@@ -30,10 +40,15 @@
     box-sizing: border-box;
     background: white;
 }
-.forgot {
+.forgot{
     text-align: right;
     margin: 5px 0;
     cursor: pointer;
+}
+.remember_me{
+    padding-left: 200px;
+    margin-top: auto;
+    
 }
 .signup {
     width: 100%;
@@ -67,7 +82,9 @@ display: flex;
 gap: 60px;
 margin: 40px auto;
 }
-
+.remember_me{
+    color:white;
+}
 .Submit{
     display: flex;
     justify-content: center;

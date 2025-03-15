@@ -34,7 +34,9 @@ const LoginForm= () =>
             className="usernamebox"
             placeholder="NAME"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => setUsername(e.target.value)
+              
+            }
           />
         </div>}
         
@@ -58,19 +60,18 @@ const LoginForm= () =>
         </div>
 
         </div>
+        {action==="Login"?<div className="remember_me ">
+          <label>
+            <input type="checkbox"/>Remember me
+          </label>
+        </div>:<div></div>}
         {action==="Sign Up"?<div></div>:<div className="Forgot_password">Lost Password?<span> Click Here! </span></div>}
         
         <div className="submit_container">
           <div className={action==="Login"?"Submit gray":"Submit"}onClick={()=>{setAction("Sign Up")}}> Sign Up </div>
           <div className={action==="Sign Up"?"Submit gray":"Submit"} onClick={()=>{setAction("Login")}}> Login </div>
         </div>
-        {/* <p className="forgot">forgot it?</p>
-        <button className="signup" onClick={handleSubmit}>
-          Sign Up!
-        </button>
-        <p className="login">
-          Already have an account? <u>LogIn!</u>
-        </p> */}
+        
         <div className="dotted-line"></div>
       </div>
     </div>
