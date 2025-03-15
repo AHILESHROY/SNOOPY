@@ -9,8 +9,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
   height:100vh;
   
-  background:linear-gradient(#0b0b0b  ,
-  #ff2f00 )
+  background:url(./components/assets/pexels-padrinan-1111319.jpg)
+  no-repeat;
+  background-size: cover; /* Scales image to cover the body, may crop */
+  background-position: center;
+
 }
 
 code {

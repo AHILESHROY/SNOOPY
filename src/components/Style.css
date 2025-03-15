@@ -12,7 +12,7 @@
     height: 400px;
     padding: 50px;
     border: 2px solid #ccc;
-    background: rgb(214, 13, 13);
+    background:rgba(214, 13, 13, 0.5);
     border-radius: 10px;
   }
 .snoppy h1,h2 {
@@ -39,6 +39,7 @@
     margin: 10px 40px;
     box-sizing: border-box;
     background: white;
+    border-radius:10px;
 }
 .forgot{
     text-align: right;
@@ -85,7 +86,7 @@ margin: 40px auto;
 .remember_me{
     color:white;
 }
-.Submit{
+.Submit {
     display: flex;
     justify-content: center;
     align-items: center;
