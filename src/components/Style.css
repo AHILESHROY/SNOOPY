@@ -1,0 +1,88 @@
+
+.outerbox {
+    max-width: 400px;
+    margin: 20px auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+}
+.snoppy h1,h2 {
+    font-family: 'Barriecito', cursive;
+    text-align: center;
+    margin: 0;
+    color: #cdfd0f;
+}
+.details {
+    padding: 20px 0;
+}
+.started {
+    text-align: center;
+    margin: 0;
+    color:white;
+}
+.dotted-line {
+    border-top: 1px dotted #000;
+    margin: 20px 0;
+}
+ .usernamebox, .emailbox, .passwordbox{
+    width: 80%;
+    padding: 8px;
+    margin: 10px 40px;
+    box-sizing: border-box;
+    background: white;
+}
+.forgot {
+    text-align: right;
+    margin: 5px 0;
+    cursor: pointer;
+}
+.signup {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+.signup:hover {
+    background-color: #0056b3;
+}
+.login {
+    text-align: center;
+    margin: 10px 0 0;
+}
+.Forgot_password{
+    padding-left: 200px;
+    margin-top: auto;
+    color:yellow;
+    font-size: medium;
+}
+.Forgot_password span{
+    color:rgb(249, 249, 249);
+    cursor: pointer;
+}
+.submit_container
+{
+width:fit-content;  
+display: flex;
+gap: 60px;
+margin: 40px auto;
+}
+
+.Submit{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width:120px;
+    height:29px;
+    color:#fff;
+    background:black ;
+    border-radius: 80px;
+    font-size: medium;
+    font-weight: 600;
+    cursor: pointer;
+}
+.gray{
+    background:white ;
+    color:black
+
+}
