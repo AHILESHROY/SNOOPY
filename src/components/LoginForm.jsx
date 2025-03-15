@@ -41,12 +41,14 @@ const SnoopyAuth = () => {
       <div className="toggle-container">
         <div className="toggle">
           <div className="toggle-panel toggle-left">
-            <h1>Welcome Back!</h1>
+            <h1>SNOOPY</h1>
+            <h2>
+            LETS GET STARTED</h2>
             <p>Enter your personal details to use all site features</p>
             <button className="hidden" onClick={() => setIsSignUp(false)}>Sign In</button>
           </div>
           <div className="toggle-panel toggle-right">
-            <h1>Hello, Friend!</h1>
+            <h1>WELCOME BACK!</h1>
             <p>Register with your personal details to use all site features</p>
             <button className="hidden" onClick={() => setIsSignUp(true)}>Sign Up</button>
           </div>
