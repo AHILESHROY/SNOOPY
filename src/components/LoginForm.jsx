@@ -1,82 +1,59 @@
-// src/components/LoginForm.jsx
-import React, { act, useState } from 'react';
-import './Style.css';
+import { useState } from "react";
+import "./Style.css";
 
-const LoginForm= () =>  
-{
-  const [action,setAction]=useState("Sign Up");
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername]=useState('');
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Email:', email);
-    console.log('Password:', password);
-    console.log('Username:', username);
-    
-    
-  };
+const SnoopyAuth = () => {
+  const [isSignUp, setIsSignUp] = useState(false);
 
   return (
-    <div className="outerbox">
-      <div className="snoppy">
-        <h1>SN00PY</h1>
+    <div className={`container ${isSignUp ? "active" : ""}`} id="container">
+      <div className="form-container sign-up">
+        <form>
+          <h1>Create Account</h1>
+          <div className="social-icons">
+            <a href="#" className="icon"><i className="fa-brands fa-google-plus-g"></i></a>
+            <a href="#" className="icon"><i className="fa-brands fa-facebook-f"></i></a>
+            <a href="#" className="icon"><i className="fa-brands fa-github"></i></a>
+            <a href="#" className="icon"><i className="fa-brands fa-linkedin-in"></i></a>
+          </div>
+          <span>or use your email for registration</span>
+          <input type="text" placeholder="Name" />
+          <input type="email" placeholder="Email" />
+          <input type="password" placeholder="Password" />
+          <button type="submit">Sign Up</button>
+        </form>
       </div>
-      <div className="details">
-        <p className="started">Let's Get Started</p>
-        <div className="dotted-line"></div>
-        
-          <h2>{action}</h2>
-        <div className="inputs">
-          {action==="Login"?<div></div>: <div className="username">
-          <input
-            type="text"
-            className="usernamebox"
-            placeholder="NAME"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)
-              
-            }
-          />
-        </div>}
-        
-        <div className="email">
-          <input
-            type="email"
-            className="emailbox"
-            placeholder="MAIL ID"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+      <div className="form-container sign-in">
+        <form>
+          <h1>Sign In</h1>
+          <div className="social-icons">
+            <a href="#" className="icon"><i className="fa-brands fa-google-plus-g"></i></a>
+            <a href="#" className="icon"><i className="fa-brands fa-facebook-f"></i></a>
+            <a href="#" className="icon"><i className="fa-brands fa-github"></i></a>
+            <a href="#" className="icon"><i className="fa-brands fa-linkedin-in"></i></a>
+          </div>
+          <span>or use your email password</span>
+          <input type="email" placeholder="Email" />
+          <input type="password" placeholder="Password" />
+          <a href="#">Forget Your Password?</a>
+          <button type="submit">Sign In</button>
+        </form>
+      </div>
+      <div className="toggle-container">
+        <div className="toggle">
+          <div className="toggle-panel toggle-left">
+            <h1>Welcome Back!</h1>
+            <p>Enter your personal details to use all site features</p>
+            <button className="hidden" onClick={() => setIsSignUp(false)}>Sign In</button>
+          </div>
+          <div className="toggle-panel toggle-right">
+            <h1>Hello, Friend!</h1>
+            <p>Register with your personal details to use all site features</p>
+            <button className="hidden" onClick={() => setIsSignUp(true)}>Sign Up</button>
+          </div>
         </div>
-        <div className="password">
-          <input
-            type="password"
-            className="passwordbox"
-            placeholder="PASSWORD"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-
-        </div>
-        {action==="Login"?<div className="remember_me ">
-          <label>
-            <input type="checkbox"/>Remember me
-          </label>
-        </div>:<div></div>}
-        {action==="Sign Up"?<div></div>:<div className="Forgot_password">Lost Password?<span> Click Here! </span></div>}
-        
-        <div className="submit_container">
-          <div className={action==="Login"?"Submit gray":"Submit"}onClick={()=>{setAction("Sign Up")}}> Sign Up </div>
-          <div className={action==="Sign Up"?"Submit gray":"Submit"} onClick={()=>{setAction("Login")}}> Login </div>
-        </div>
-        
-        <div className="dotted-line"></div>
       </div>
     </div>
   );
+};
 
-}
-
-export default LoginForm;
+export default SnoopyAuth;
