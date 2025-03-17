@@ -6,44 +6,6 @@
     box-sizing: border-box;
     font-family: 'Montserrat', sans-serif;
 }
-/* Default button styles */
-.container button {
-    background-color: red;
-    color: #fff;
-    font-size: 12px;
-    padding: 10px 45px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    margin-top: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease-in-out;
-}
-
-.sign-up button:hover {
-    transform: scale(1.05);
-    background-color: rgb(200, 0, 0);    
-}
-
-/* Translucent hover effect for Sign In & Sign Up buttons in the toggle panel */
-.toggle-panel button {
-    background-color: transparent;
-    border: 2px solid white;
-    color: white;
-    padding: 10px 40px;
-    transition: all 0.3s ease-in-out;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
-
-    
-}
-
-.toggle-panel button:hover {
-    background-color: rgba(255, 255, 255, 0.2); /* Translucent white */
-    transform: scale(1.1); /* Slightly larger */
-    border-color: rgba(255, 255, 255, 0.5);
-}
 
 body{
     background-color: #c9d6ff;
@@ -165,6 +127,42 @@ body{
         z-index: 5;
     }
 }
+/* Default button styles */
+.container button {
+    background-color: red;
+    color: #fff;
+    font-size: 12px;
+    padding: 10px 45px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Simple hover effect for the Sign Up button */
+.sign-up button:hover {
+    transform: scale(1.05);
+    background-color: rgb(200, 0, 0);
+}
+
+/* Translucent hover effect for Sign In & Sign Up buttons in the toggle panel */
+.toggle-panel button {
+    background-color: transparent;
+    border: 2px solid white;
+    color: white;
+    padding: 10px 40px;
+    transition: all 0.3s ease-in-out;
+}
+
+.toggle-panel button:hover {
+    background-color: rgba(255, 255, 255, 0.2); /* Translucent white */
+    transform: scale(1.1); /* Slightly larger */
+    border-color: rgba(255, 255, 255, 0.5);
+}
 
 .social-icons{
     margin: 20px 0;
@@ -191,7 +189,7 @@ body{
 }
 
 /* Specific colors for each social icon */
-.social-icons a:nth-child(1):hover { background-color: #DB4437; } /* Google Red */
+.social-icons a:nth-child(1):hover { background-color: #DB4437; } 
 
 .toggle-container{
     position: absolute;
