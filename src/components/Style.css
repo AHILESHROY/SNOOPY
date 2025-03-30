@@ -317,8 +317,8 @@ body {
 
 /* Hover effect for Sign In button */
 .sign-in button:hover {
-    background-color: rgb(230, 180, 0); /* Slightly darker yellow */
-    transform: scale(1.1); /* Slightly enlarge */
+    background-color: rgb(230, 180, 0); 
+    transform: scale(1.1); 
     
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }

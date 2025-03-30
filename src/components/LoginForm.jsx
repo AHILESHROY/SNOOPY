@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Style.css";
+
 
 const SnoopyAuth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [carts, setCarts] = useState([]);
+  const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const generateCarts = () => {
@@ -21,6 +25,24 @@ const SnoopyAuth = () => {
 
     generateCarts();
   }, []);
+
+  // Handle input changes
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // Handle form submissions
+  const handleSignUp = (e) => {
+    e.preventDefault();
+    console.log("Sign Up submitted with", formData);
+    navigate("/home");
+  };
+
+  const handleSignIn = (e) => {
+    e.preventDefault();
+    console.log("Sign In submitted with", formData);
+    navigate("/home");
+  };
 
   return (
     <div className={`container ${isSignUp ? "active" : ""}`} id="container">
@@ -40,30 +62,34 @@ const SnoopyAuth = () => {
       </div>
 
       <div className="form-container sign-up">
-        <form>
+        <form onSubmit={handleSignUp}>
           <h1>Create Account</h1>
           <div className="social-icons">
-            <a href="#" className="icon"><i className="fa-brands fa-google-plus-g"></i></a>
+            <a href="javascript:void(0)" className="icon">
+              <i className="fa-brands fa-google-plus-g"></i>
+            </a>
           </div>
           <span>or use your email for registration</span>
-          <input type="text" placeholder="Name" />
-          <input type="email" placeholder="Email" />
-          <input type="password" placeholder="Password" />
-          <button type="submit" >Sign Up</button>
+          <input type="text" name="name" placeholder="Name" value={formData.name} onChange={handleChange} required />
+          <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} required />
+          <input type="password" name="password" placeholder="Password" value={formData.password} onChange={handleChange} required />
+          <button type="submit">Sign Up</button>
         </form>
       </div>
 
       <div className="form-container sign-in">
-        <form>
+        <form onSubmit={handleSignIn}>
           <h1>Sign In</h1>
           <div className="social-icons">
-            <a href="#" className="icon"><i className="fa-brands fa-google-plus-g"></i></a>
+            <a href="javascript:void(0)" className="icon">
+              <i className="fa-brands fa-google-plus-g"></i>
+            </a>
           </div>
           <span>or use your email password</span>
-          <input type="email" placeholder="Email" />
-          <input type="password" placeholder="Password" />
-          <a href="#">Forget Your Password?</a>
+          <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} required />
+          <input type="password" name="password" placeholder="Password" value={formData.password} onChange={handleChange} required />
           <button type="submit">Sign In</button>
+          <button type="button" onClick={() => console.log("Forgot Password clicked")}>Forgot Your Password?</button>
         </form>
       </div>
 

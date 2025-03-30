@@ -1,0 +1,103 @@
+/* Global Styles */
+.about-container {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-align: center;
+    padding: 40px;
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    color: white;
+    min-height: 100vh;
+  }
+  
+  /* Header */
+  .about-header {
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  
+  .back-link {
+    text-decoration: none;
+    color: #ffcc00;
+    font-size: 1.2rem;
+    transition: color 0.3s;
+  }
+  
+  .back-link:hover {
+    color: #ffd633;
+  }
+  
+  /* Main Content */
+  .about-content h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+  }
+  
+  .about-content p {
+    font-size: 1.2rem;
+    max-width: 700px;
+    margin: 0 auto 20px;
+    line-height: 1.6;
+  }
+  
+  /* Team Section */
+  .team-section {
+    margin-top: 40px;
+  }
+  
+  .team-grid {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+  }
+  
+  .team-member {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    transition: transform 0.3s;
+  }
+  
+  .team-member img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+  }
+  
+  .team-member h3 {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+  }
+  
+  .team-member p {
+    font-size: 1rem;
+    opacity: 0.8;
+  }
+  
+  .team-member:hover {
+    transform: scale(1.05);
+  }
+  
+  /* Mission Section */
+  .mission-section {
+    margin-top: 40px;
+  }
+  
+  .mission-section h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+  
+  .mission-section p {
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  /* Footer */
+  .about-footer {
+    margin-top: 40px;
+    font-size: 1rem;
+    opacity: 0.8;
+  }
+  

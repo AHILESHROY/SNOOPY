@@ -1,0 +1,33 @@
+.your-page-container {
+    padding-top: 60px; /* Offset for fixed nav height from HomePage */
+    min-height: 100vh;
+    padding: 60px 20px 20px; /* Top padding matches nav height */
+  }
+  
+  .back-link {
+    display: inline-block;
+    padding: 10px 20px;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.3s ease;
+  }
+  
+  .back-link:hover {
+    background-color: #f0f0f0;
+    color: #000;
+  }
+  
+  main {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  h1 {
+    margin-bottom: 20px;
+  }
+  
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    color: #666;
+  }
