@@ -3,7 +3,7 @@ import LoginForm from './components/LoginForm.jsx';
 import HomePage from './components/HomePage/HomePage.jsx';
 import YourPage from './components/YourPage/YourPage.jsx';
 import AboutUs from './components/About/AboutUs.jsx';
-import Navbar from "./components/Navbar/Navbar";
+import Navbar from "./components/Navbar/Navbar.jsx";
 import OurService from './components/OurService/OurService.jsx';
 function Layout() {
   const location = useLocation();

@@ -1,0 +1,76 @@
+{
+  "products": [
+    {
+      "id": "1",
+      "name": "Premium Wireless Headphones",
+      "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60",
+      "price": 129.99,
+      "originalPrice": 199.99,
+      "rating": 4.5,
+      "ratingCount": 128
+    },
+    {
+      "id": "2",
+      "name": "Smart Watch Series 5",
+      "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=60",
+      "price": 249.99,
+      "originalPrice": 299.99,
+      "rating": 4.8,
+      "ratingCount": 256
+    },
+    {
+      "id": "3",
+      "name": "Professional Camera Kit",
+      "image": "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500&auto=format&fit=crop&q=60",
+      "price": 899.99,
+      "originalPrice": 1299.99,
+      "rating": 4.7,
+      "ratingCount": 89
+    },
+    {
+      "id": "4",
+      "name": "Gaming Laptop Pro",
+      "image": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&auto=format&fit=crop&q=60",
+      "price": 1499.99,
+      "originalPrice": 1799.99,
+      "rating": 4.9,
+      "ratingCount": 312
+    },
+    {
+      "id": "5",
+      "name": "Wireless Earbuds",
+      "image": "https://images.unsplash.com/photo-1606220588911-649bf27a94f3?w=500&auto=format&fit=crop&q=60",
+      "price": 79.99,
+      "originalPrice": 99.99,
+      "rating": 4.3,
+      "ratingCount": 178
+    },
+    {
+      "id": "6",
+      "name": "Smart Home Hub",
+      "image": "https://images.unsplash.com/photo-1558002038-1055e5c7b0d2?w=500&auto=format&fit=crop&q=60",
+      "price": 199.99,
+      "originalPrice": 249.99,
+      "rating": 4.6,
+      "ratingCount": 92
+    },
+    {
+      "id": "7",
+      "name": "4K Ultra HD TV",
+      "image": "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=500&auto=format&fit=crop&q=60",
+      "price": 799.99,
+      "originalPrice": 999.99,
+      "rating": 4.7,
+      "ratingCount": 156
+    },
+    {
+      "id": "8",
+      "name": "Portable Bluetooth Speaker",
+      "image": "https://images.unsplash.com/photo-1608043152267-312f61cdb86c?w=500&auto=format&fit=crop&q=60",
+      "price": 59.99,
+      "originalPrice": 79.99,
+      "rating": 4.4,
+      "ratingCount": 203
+    }
+  ]
+} 

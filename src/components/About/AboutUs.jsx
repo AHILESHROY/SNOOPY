@@ -2,61 +2,60 @@ import React from "react";
 import { Link } from "react-router-dom";
 import "./AboutUs.css";
 
+// Import team images
+import Ahilesh from "../assets/images/ahilesh.jpg";
+import Aadhav from "../assets/images/aadhav.jpg";
+import Akhil from "../assets/images/akhil.jpg";
+import Nitish from "../assets/images/nitish.jpg";
+import Gowtham from "../assets/images/gowtham.jpg";
+
+const teamMembers = [
+  { name: "Ahilesh Roy", role: "Front End Developer", image: Ahilesh },
+  { name: "Aadhav Nagarajan", role: "Back End Developer", image: Aadhav },
+  { name: "Akhil Ramalingam", role: "Front End Developer", image: Akhil },
+  { name: "Nitish Balamurali", role: "Back End Developer", image: Nitish },
+  { name: "Gowtham V", role: "Testing Manager", image: Gowtham },
+];
+
 const AboutUs = () => {
   return (
-    <div className="about-container">
-      {/* Header */}
-      <header className="about-header">
-        <Link to="/" className="back-link">← Back to Home</Link>
-      </header>
+    <div className="about-page-body">
+      <div className="about-container">
+        {/* Header */}
+        <header className="about-header">
+          <Link to="/" className="back-link">← Back to Home</Link>
+          <h1>Meet Our Team</h1>
+        </header>
 
-      {/* Main Content */}
-      <main className="about-content">
-        <h1>Who We Are</h1>
-        <p>
-          Welcome to <strong>SNOOPY</strong>—where creativity meets innovation!
-          Our journey began with a vision to revolutionize the way people
-          interact with technology, providing seamless solutions that enhance
-          everyday life.
-        </p>
-
-        {/* Team Section */}
-        <section className="team-section">
-          <h2>Meet Our Team</h2>
-          <div className="team-grid">
-            <div className="team-member">
-              <img src="https://via.placeholder.com/150" alt="Team Member 1" />
-              <h3>Jane Doe</h3>
-              <p>Founder & CEO</p>
-            </div>
-            <div className="team-member">
-              <img src="https://via.placeholder.com/150" alt="Team Member 2" />
-              <h3>John Smith</h3>
-              <p>Lead Developer</p>
-            </div>
-            <div className="team-member">
-              <img src="https://via.placeholder.com/150" alt="Team Member 3" />
-              <h3>Emily Brown</h3>
-              <p>Creative Director</p>
-            </div>
+        {/* Team Members 3D Slider */}
+        <div className="banner">
+          <div className="slider">
+            {teamMembers.map((member, index) => (
+              <div 
+                className="item" 
+                key={index}
+                style={{ 
+                  transform: `rotateY(${index * (360 / teamMembers.length)}deg) translateZ(400px)`,
+                  transition: "transform 0.5s ease-in-out",
+                }}
+              >
+                <div className="team-card">
+                  <img src={member.image} alt={member.name} className="team-image" />
+                  <div className="team-info">
+                    <h3>{member.name}</h3>
+                    <p>{member.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </section>
+        </div>
 
-        {/* Our Mission */}
-        <section className="mission-section">
-          <h2>Our Mission</h2>
-          <p>
-            At <strong>SNOOPY</strong>, our mission is to blend technology with
-            creativity to craft exceptional digital experiences. We believe in
-            innovation, teamwork, and customer satisfaction.
-          </p>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="about-footer">
-        <p>&copy; 2025 SNOOPY. All Rights Reserved.</p>
-      </footer>
+        {/* Footer */}
+        <footer className="about-footer">
+          <p>© 2025 SNOOPY. All Rights Reserved.</p>
+        </footer>
+      </div>
     </div>
   );
 };
