@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "./firebase";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from "firebase/auth";
+import axios from 'axios';
 import "./Style.css";
 
 const SnoopyAuth = () => {
@@ -14,7 +15,10 @@ const SnoopyAuth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [userInfo, setUserInfo] = useState(null); // Store fetched user info
+  const [trackedObjects, setTrackedObjects] = useState(null); // Store tracked objects (wishlist)
   const navigate = useNavigate();
+  const API_BASE_URL = 'http://13.203.223.3:8000';
 
   // Initialize Google provider
   const googleProvider = new GoogleAuthProvider();
@@ -37,28 +41,34 @@ const SnoopyAuth = () => {
     generateCarts();
   }, []);
 
-  // Password strength calculation and validation (for sign-up only)
+  // Password strength calculation (for sign-up only)
   useEffect(() => {
-    if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) {
-      setError("Passwords don't match!");
-    } else if (formData.password && passwordStrength < 3) {
-      setError("Password is too weak!");
-    } else {
-      setError("");
-    }
-
     let strength = 0;
     if (formData.password.length >= 8) strength++;
     if (/[A-Z]/.test(formData.password)) strength++;
     if (/[0-9]/.test(formData.password)) strength++;
     if (/[^A-Za-z0-9]/.test(formData.password)) strength++;
     setPasswordStrength(Math.min(strength, 4));
-  }, [formData.password, formData.confirmPassword]);
+    console.log("Password Strength:", strength); // Debug password strength
+  }, [formData.password]);
 
   // Handle input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setSuccess(""); // Clear success message on input change
+    setError(""); // Clear error message on input change to prevent lingering errors
+  };
+
+  // Function to fetch tracked objects (wishlist) after sign-in
+  const fetchTrackedObjects = async (email) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/get_tracked_objects`, { email });
+      console.log("GET /get_tracked_objects response:", response.data);
+      setTrackedObjects(response.data.user_budgets[0]); // Store the tracked objects
+    } catch (err) {
+      console.error("Error fetching tracked objects:", err.response?.data || err.message);
+      setError("Failed to fetch tracked objects: " + (err.response?.data?.detail || err.message));
+    }
   };
 
   // Handle Google Sign-In/Sign-Up
@@ -66,17 +76,53 @@ const SnoopyAuth = () => {
     try {
       setError("");
       setSuccess("");
+      console.log("Initiating Google Sign-In...");
       const result = await signInWithPopup(auth, googleProvider);
-      console.log("Google Sign-In successful:", result.user);
+      const user = result.user;
+      console.log("Google Sign-In successful:", user);
+
+      // Log the payload being sent to the backend
+      const payload = {
+        firebase_uid: user.uid,
+        email: user.email,
+        name: user.displayName || formData.name || "Google User",
+      };
+      console.log("Sending POST /users payload:", payload);
+
+      // Attempt to send custom user info to FastAPI backend
+      try {
+        const postResponse = await axios.post(`${API_BASE_URL}/users`, payload);
+        console.log("POST /users response:", postResponse.data);
+      } catch (postError) {
+        console.error("Error posting user to backend:", postError.response?.data || postError.message);
+        setError("Failed to save user info to backend: " + (postError.response?.data?.detail || postError.message));
+      }
+
+      // Attempt to fetch custom user info after sign-in
+      try {
+        const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
+        console.log("GET /users response:", getResponse.data);
+        setUserInfo(getResponse.data);
+      } catch (getError) {
+        console.error("Error fetching user from backend:", getError.response?.data || getError.message);
+        setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
+      }
+
+      // Fetch tracked objects (wishlist) using the user's email
+      await fetchTrackedObjects(user.email);
+
       setSuccess("Signed in with Google successfully!");
-      setTimeout(() => navigate("/home"), 1000); // Navigate after showing success message
+      setTimeout(() => navigate("/home"), 1000);
     } catch (err) {
+      console.error("Google Sign-In error:", err);
       const errorMessages = {
         "auth/popup-closed-by-user": "Google sign-in was cancelled.",
         "auth/network-request-failed": "Network error. Please try again.",
         "auth/too-many-requests": "Too many requests. Please try again later.",
+        "auth/unauthorized-domain": "This domain is not authorized for Google Sign-In.",
+        "auth/invalid-api-key": "Invalid Firebase API key. Check your configuration.",
       };
-      setError(errorMessages[err.code] || "Failed to sign in with Google. Please try again.");
+      setError(errorMessages[err.code] || `Failed to sign in with Google: ${err.message}`);
     }
   };
 
@@ -84,31 +130,66 @@ const SnoopyAuth = () => {
   const handleSignUp = async (e) => {
     e.preventDefault();
 
+    // Validate passwords on submission
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords don't match!");
       return;
     }
 
-    if (passwordStrength < 3) {
-      setError("Password is too weak!");
+    if (passwordStrength < 1) {
+      setError("Password must be at least 8 characters long!");
       return;
     }
 
     try {
       setError("");
       setSuccess("");
-      await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+      console.log("Firebase sign-up successful:", user);
+
+      // Log the payload being sent to the backend
+      const payload = {
+        firebase_uid: user.uid,
+        email: user.email,
+        name: formData.name,
+      };
+      console.log("Sending POST /users payload:", payload);
+
+      // Attempt to send custom user info to FastAPI backend
+      try {
+        const postResponse = await axios.post(`${API_BASE_URL}/users`, payload);
+        console.log("POST /users response:", postResponse.data);
+      } catch (postError) {
+        console.error("Error posting user to backend:", postError.response?.data || postError.message);
+        setError("Failed to save user info to backend: " + (postError.response?.data?.detail || postError.message));
+      }
+
+      // Attempt to fetch custom user info after sign-up
+      try {
+        const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
+        console.log("GET /users response:", getResponse.data);
+        setUserInfo(getResponse.data);
+      } catch (getError) {
+        console.error("Error fetching user from backend:", getError.response?.data || getError.message);
+        setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
+      }
+
+      // Fetch tracked objects (wishlist) using the user's email
+      await fetchTrackedObjects(user.email);
+
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
       setSuccess("Account created successfully!");
-      setTimeout(() => navigate("/home"), 1000); // Navigate after a short delay to show success message
+      setTimeout(() => navigate("/home"), 1000);
     } catch (err) {
+      console.error("Sign-up error:", err);
       const errorMessages = {
         "auth/email-already-in-use": "This email is already registered.",
         "auth/invalid-email": "Please enter a valid email address.",
         "auth/weak-password": "Password is too weak.",
         "auth/operation-not-allowed": "Sign-up is currently disabled.",
       };
-      setError(errorMessages[err.code] || "An error occurred. Please try again.");
+      setError(errorMessages[err.code] || "An error occurred during sign-up: " + err.message);
     }
   };
 
@@ -119,18 +200,59 @@ const SnoopyAuth = () => {
     try {
       setError("");
       setSuccess("");
-      await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+      console.log("Firebase login successful:", user);
+
+      // Attempt to fetch custom user info from FastAPI backend
+      try {
+        const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
+        console.log("GET /users response:", getResponse.data);
+        setUserInfo(getResponse.data);
+      } catch (getError) {
+        console.error("Error fetching user from backend:", getError.response?.data || getError.message);
+        setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
+      }
+
+      // Fetch tracked objects (wishlist) using the user's email
+      await fetchTrackedObjects(user.email);
+
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
       setSuccess("Signed in successfully!");
-      setTimeout(() => navigate("/home"), 1000); // Navigate after a short delay to show success message
+      setTimeout(() => navigate("/home"), 1000);
     } catch (err) {
+      console.error("Sign-in error:", err);
       const errorMessages = {
         "auth/user-not-found": "No user found with this email.",
         "auth/wrong-password": "Incorrect password.",
         "auth/invalid-email": "Please enter a valid email address.",
         "auth/too-many-requests": "Too many attempts. Please try again later.",
       };
-      setError(errorMessages[err.code] || "Failed to sign in. Please try again.");
+      setError(errorMessages[err.code] || "Failed to sign in: " + err.message);
+    }
+  };
+
+  // Handle password reset
+  const handlePasswordReset = async () => {
+    console.log("handlePasswordReset called with email:", formData.email);
+    if (!formData.email) {
+      setError("Please enter your email address to reset your password.");
+      return;
+    }
+
+    try {
+      setError("");
+      setSuccess("");
+      await sendPasswordResetEmail(auth, formData.email);
+      setSuccess("Password reset email sent! Check your inbox (and spam/junk folder).");
+    } catch (err) {
+      console.error("Password reset error:", err);
+      const errorMessages = {
+        "auth/invalid-email": "Please enter a valid email address.",
+        "auth/user-not-found": "No user found with this email.",
+        "auth/too-many-requests": "Too many requests. Please try again later.",
+      };
+      setError(errorMessages[err.code] || "Failed to send password reset email: " + err.message);
     }
   };
 
@@ -158,48 +280,60 @@ const SnoopyAuth = () => {
 
       {/* Sign-Up Form */}
       <div className="form-container sign-up">
-        <form onSubmit={handleSignUp}>
-          <h1>Create Account</h1>
+        <form onSubmit={handleSignUp} noValidate>
+          <h1 className="Create_Account">Create Account</h1>
           <div className="social-icons">
             <a href="javascript:void(0)" className="icon" onClick={handleGoogleSignIn}>
               <i className="fa-brands fa-google-plus-g"></i>
             </a>
           </div>
           <span>or use your email for registration</span>
-          <input
-            type="text"
-            name="name"
-            placeholder="Name"
-            value={formData.name}
-            onChange={handleChange}
-            required
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-          <div className="password-wrapper">
+          <div className="input-wrapper">
             <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              placeholder="Password"
-              value={formData.password}
+              type="text"
+              name="name"
+              placeholder="Name"
+              value={formData.name}
               onChange={handleChange}
               required
-              minLength={8}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="toggle-password"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              <i className={`fa-solid ${showPassword ? "fa-eye-slash" : "fa-eye"}`}></i>
-            </button>
+          </div>
+          <div className="input-wrapper">
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+            {error && error.includes("email") && (
+              <span className="error-tooltip">{error}</span>
+            )}
+          </div>
+          <div className="input-wrapper">
+            <div className="password-container">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                minLength={8}
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                <i className={`fa-solid ${showPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
+              </button>
+            </div>
+            {error && error.includes("Password must be at least 8 characters long") && (
+              <span className="error-tooltip">{error}</span>
+            )}
           </div>
           <div className="strength-meter">
             <div
@@ -212,27 +346,30 @@ const SnoopyAuth = () => {
               Strength: {["Weak", "Fair", "Good", "Strong", "Very Strong"][passwordStrength]}
             </div>
           )}
-          <div className="password-wrapper">
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              name="confirmPassword"
-              placeholder="Confirm Password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="toggle-password"
-              aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
-            >
-              <i className={`fa-solid ${showConfirmPassword ? "fa-eye-slash" : "fa-eye"}`}></i>
-            </button>
+          <div className="input-wrapper">
+            <div className="password-container">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+              >
+                <i className={`fa-solid ${showConfirmPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
+              </button>
+            </div>
+            {error && error.includes("Passwords don't match") && (
+              <span className="error-tooltip">{error}</span>
+            )}
           </div>
-          {error && <div className="error-message">{error}</div>}
-          {success && <div className="success-message">{success}</div>}
-          <button type="submit" disabled={!!error || passwordStrength < 3}>
+          <button type="submit">
             Sign Up
           </button>
         </form>
@@ -240,7 +377,7 @@ const SnoopyAuth = () => {
 
       {/* Sign-In Form */}
       <div className="form-container sign-in">
-        <form onSubmit={handleSignIn}>
+        <form onSubmit={handleSignIn} noValidate>
           <h1>Sign In</h1>
           <div className="social-icons">
             <a href="javascript:void(0)" className="icon" onClick={handleGoogleSignIn}>
@@ -248,38 +385,46 @@ const SnoopyAuth = () => {
             </a>
           </div>
           <span>or use your email password</span>
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-          <div className="password-wrapper">
+          <div className="input-wrapper">
             <input
-              type={showSignInPassword ? "text" : "password"}
-              name="password"
-              placeholder="Password"
-              value={formData.password}
+              type="email"
+              name="email"
+              placeholder="Email"
+              value={formData.email}
               onChange={handleChange}
               required
             />
-            <button
-              type="button"
-              onClick={() => setShowSignInPassword(!showSignInPassword)}
-              className="toggle-password"
-              aria-label={showSignInPassword ? "Hide password" : "Show password"}
-            >
-              <i className={`fa-solid ${showSignInPassword ? "fa-eye-slash" : "fa-eye"}`}></i>
-            </button>
+            {error && (error.includes("email") || error.includes("No user found")) && (
+              <span className="error-tooltip">{error}</span>
+            )}
           </div>
-          {error && <div className="error-message">{error}</div>}
-          {success && <div className="success-message">{success}</div>}
-          <button type="submit">Sign In</button>
-          <button type="button" onClick={() => console.log("Forgot Password clicked")}>
+          <div className="input-wrapper">
+            <div className="password-container">
+              <input
+                type={showSignInPassword ? "text" : "password"}
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowSignInPassword(!showSignInPassword)}
+                aria-label={showSignInPassword ? "Hide password" : "Show password"}
+              >
+                <i className={`fa-solid ${showSignInPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
+              </button>
+            </div>
+            {error && error.includes("password") && (
+              <span className="error-tooltip">{error}</span>
+            )}
+          </div>
+          <button type="button" className="forgot-password" onClick={handlePasswordReset}>
             Forgot Your Password?
           </button>
+          <button type="submit">Sign In</button>
         </form>
       </div>
 
@@ -303,6 +448,42 @@ const SnoopyAuth = () => {
           </div>
         </div>
       </div>
+
+      {/* Display User Info and Tracked Objects */}
+      {(userInfo || trackedObjects) && (
+        <div className="user-info">
+          {userInfo && (
+            <>
+              <h3>User Information:</h3>
+              <p>Name: {userInfo.name}</p>
+              <p>Email: {userInfo.email}</p>
+            </>
+          )}
+          {trackedObjects && (
+            <>
+              <h3>Tracked Objects (Wishlist):</h3>
+              {trackedObjects.u_id.length > 0 ? (
+                <ul>
+                  {trackedObjects.u_id.map((itemId, index) => (
+                    <li key={itemId}>
+                      Product ID: {itemId}, Price: ${trackedObjects.product_price[index]}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No tracked objects found.</p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Toast Notification for Success Messages */}
+      {success && (
+        <div className="toast-notification success">
+          {success}
+        </div>
+      )}
     </div>
   );
 };
