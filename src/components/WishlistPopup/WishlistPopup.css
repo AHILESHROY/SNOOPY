@@ -1,0 +1,374 @@
+.wishlist-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color:rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.wishlist-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #f9f9f9;
+  padding: 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  width: 95%;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.wishlist-popup-header {
+  color: black;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wishlist-popup-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.close-button {
+  position: absolute;
+  top: 2.5rem;
+  right: 2rem;
+  background: none;
+  
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: black;
+  padding: 0.5rem;
+  border-radius: 100%;
+  
+  transition: all 0.3s ease;
+}
+
+.close-button:hover {
+  background: #f5f5f5;
+  color: #333;
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.wishlist-table-container {
+  overflow-y: hidden;
+  flex: 1;
+  padding: 1rem;
+  max-height: 90vh;
+  position: relative;
+}
+
+.wishlist-table {
+  width: 100%;
+  border-collapse: collapse;
+  position: relative;
+}
+
+.wishlist-table th {
+  background: yellow;
+  padding: 1.2rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 3px solid #ccc;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  transition: background 0.3s ease;
+}
+
+.wishlist-table th:nth-child(3),
+.wishlist-table th:nth-child(4) {
+  color: transparent;
+}
+
+.wishlist-table tbody {
+  position: relative;
+  z-index: 1;
+  max-height: calc(70vh - 60px);
+  overflow-y: auto;
+  display: block;
+}
+
+.wishlist-table tr {
+  display: table;
+  width: 100%;
+  table-layout: absolute;
+}
+
+.wishlist-table tr:hover td {
+  background: #f0f0f0;
+}
+
+.wishlist-table td {
+  padding: 1.2rem;
+  border-bottom: 1px solid #ddd;
+  vertical-align: middle;
+  transition: background 0.3s ease;
+  text-align: left;
+}
+
+.product-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.product-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.product-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.product-details h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.platform {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.price {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: right;
+}
+
+.original-price {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.current-price {
+  font-weight: 600;
+  color: #e74c3c;
+}
+
+.discount {
+  background: #27ae60;
+  color: white;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  display: inline-block;
+}
+
+.amount-cell {
+  width: 120px;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.amount-display {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f9f9f9;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color:black;
+  font-style: italic;
+}
+
+.amount-display:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.amount-display:not(:empty) {
+  font-style: normal;
+  color: #333;
+}
+
+.amount-input-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.amount-input {
+  width: 80px;
+  padding: 8px;
+  border: 1px solid #000000;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 10px;
+  background: #fff;
+  transition: all 0.3s ease;
+}
+
+.amount-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+.amount-input:hover {
+  border-color: #3498db;
+}
+
+.amount-error {
+  color: #e74c3c;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.amount-input-cell {
+  width: 120px;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.actions {
+  width: 100px;
+  text-align:right;
+  
+}
+
+.remove-button {
+  background: red;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  padding-left: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+  margin-left: -15px;
+  min-width: 80px;
+  text-indent: 12px;
+}
+
+.remove-button:hover {
+  background: #c0392b;
+}
+
+.empty-wishlist-message {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.serial-number {
+  width: 50px;
+  text-align: center;
+  font-weight: 600;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .wishlist-popup {
+    width: 95%;
+  }
+
+  .product-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .product-image {
+    width: 60px;
+    height: 60px;
+  }
+
+  .wishlist-table th,
+  .wishlist-table td {
+    padding: 0.5rem;
+  }
+}
+
+.wishlist-submit-section {
+  padding: 1rem;
+  border-top: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #fff;
+}
+
+.email-input-container {
+  flex: 1;
+  position: relative;
+}
+
+.email-input {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: border-color 0.3s ease;
+}
+
+.email-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+.submit-button {
+  background: #2ecc71;
+  color: white;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+  min-width: 120px;
+}
+
+.submit-button:hover {
+  background: #27ae60;
+}
+
+.submit-button:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.submit-error {
+  color: #e74c3c;
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+}
+
+.submit-error-message {
+  color: #e74c3c;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  text-align: center;
+  background: #fde8e8;
+  border-radius: 4px;
+  margin: 1rem;
+} 
