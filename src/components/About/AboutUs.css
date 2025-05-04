@@ -98,10 +98,10 @@
     opacity: 0;
   }
   10% {
-    opacity: 0.8;
+    opacity: 0.4;
   }
   90% {
-    opacity: 0.8;
+    opacity: 0.4;
   }
   100% {
     transform: translateY(100vh) rotate(15deg);
@@ -122,59 +122,60 @@
 
 .rain-cart {
   position: absolute;
-  color: white;
-  font-size: 30px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 20px;
   opacity: 0;
-  animation: rain 4s linear infinite;
+  animation: rain 6s linear infinite;
+  filter: blur(1px);
 }
 
 /* Generate random positions and delays for 20 carts */
 .rain-cart:nth-child(1) { left: 5%; animation-delay: 0s; }
-.rain-cart:nth-child(2) { left: 15%; animation-delay: 0.2s; }
-.rain-cart:nth-child(3) { left: 25%; animation-delay: 0.4s; }
-.rain-cart:nth-child(4) { left: 35%; animation-delay: 0.6s; }
-.rain-cart:nth-child(5) { left: 45%; animation-delay: 0.8s; }
-.rain-cart:nth-child(6) { left: 55%; animation-delay: 1s; }
-.rain-cart:nth-child(7) { left: 65%; animation-delay: 1.2s; }
-.rain-cart:nth-child(8) { left: 75%; animation-delay: 1.4s; }
-.rain-cart:nth-child(9) { left: 85%; animation-delay: 1.6s; }
-.rain-cart:nth-child(10) { left: 95%; animation-delay: 1.8s; }
-.rain-cart:nth-child(11) { left: 10%; animation-delay: 2s; }
-.rain-cart:nth-child(12) { left: 20%; animation-delay: 2.2s; }
-.rain-cart:nth-child(13) { left: 30%; animation-delay: 2.4s; }
-.rain-cart:nth-child(14) { left: 40%; animation-delay: 2.6s; }
-.rain-cart:nth-child(15) { left: 50%; animation-delay: 2.8s; }
-.rain-cart:nth-child(16) { left: 60%; animation-delay: 3s; }
-.rain-cart:nth-child(17) { left: 70%; animation-delay: 3.2s; }
-.rain-cart:nth-child(18) { left: 80%; animation-delay: 3.4s; }
-.rain-cart:nth-child(19) { left: 90%; animation-delay: 3.6s; }
-.rain-cart:nth-child(20) { left: 100%; animation-delay: 3.8s; }
+.rain-cart:nth-child(2) { left: 15%; animation-delay: 0.3s; }
+.rain-cart:nth-child(3) { left: 25%; animation-delay: 0.6s; }
+.rain-cart:nth-child(4) { left: 35%; animation-delay: 0.9s; }
+.rain-cart:nth-child(5) { left: 45%; animation-delay: 1.2s; }
+.rain-cart:nth-child(6) { left: 55%; animation-delay: 1.5s; }
+.rain-cart:nth-child(7) { left: 65%; animation-delay: 1.8s; }
+.rain-cart:nth-child(8) { left: 75%; animation-delay: 2.1s; }
+.rain-cart:nth-child(9) { left: 85%; animation-delay: 2.4s; }
+.rain-cart:nth-child(10) { left: 95%; animation-delay: 2.7s; }
+.rain-cart:nth-child(11) { left: 10%; animation-delay: 3s; }
+.rain-cart:nth-child(12) { left: 20%; animation-delay: 3.3s; }
+.rain-cart:nth-child(13) { left: 30%; animation-delay: 3.6s; }
+.rain-cart:nth-child(14) { left: 40%; animation-delay: 3.9s; }
+.rain-cart:nth-child(15) { left: 50%; animation-delay: 4.2s; }
+.rain-cart:nth-child(16) { left: 60%; animation-delay: 4.5s; }
+.rain-cart:nth-child(17) { left: 70%; animation-delay: 4.8s; }
+.rain-cart:nth-child(18) { left: 80%; animation-delay: 5.1s; }
+.rain-cart:nth-child(19) { left: 90%; animation-delay: 5.4s; }
+.rain-cart:nth-child(20) { left: 100%; animation-delay: 5.7s; }
 
 /* Add random sizes */
 .rain-cart:nth-child(odd) {
-  font-size: 25px;
+  font-size: 18px;
 }
 
 .rain-cart:nth-child(3n) {
-  font-size: 35px;
+  font-size: 22px;
 }
 
 /* Add random rotation speeds */
 .rain-cart:nth-child(2n) {
-  animation: rain 3.5s linear infinite;
+  animation: rain 5s linear infinite;
 }
 
 .rain-cart:nth-child(3n) {
-  animation: rain 4.5s linear infinite;
+  animation: rain 7s linear infinite;
 }
 
 /* Add random opacity */
 .rain-cart:nth-child(4n) {
-  opacity: 0.6;
+  opacity: 0.3;
 }
 
 .rain-cart:nth-child(5n) {
-  opacity: 0.7;
+  opacity: 0.35;
 }
 
 .development-process h2 {
