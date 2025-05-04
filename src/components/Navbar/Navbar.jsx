@@ -1,67 +1,69 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import "./Navbar.css";
 
 const Navbar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  const isActive = (path) => {
+    return location.pathname === path ? 'active' : '';
+  };
+
   return (
     <>
       {/* Main Navigation Bar */}
-      <nav className="bg-blue-600 p-4 fixed top-0 w-full z-50 shadow-md flex justify-between items-center">
+      <nav>
         {/* SNOOPY Brand Name */}
-         <div className="brand-name">SNOOPY</div>
+        <Link to="/home" className="brand-name">SNOOPY </Link>
         
         {/* Navigation Items */}
-        <div className="flex justify-end items-center max-w-6xl mx-auto">
-          <ul className="flex space-x-6 text-white">
-            <li className="hidden md:block">
-              <Link to="/home" className="hover:underline">Home</Link>
-            </li>
-            <li className="hidden md:block">
-              <Link to="/yourpage" className="hover:underline">Your Page</Link>
-            </li>
-            <li className="hidden md:block">
-              <Link to="/ourservice" className="hover:underline">Our Service</Link>
-            </li>
-            <li className="hidden md:block">
-              <Link to="/aboutus" className="hover:underline">About Us</Link>
-            </li>
-            <li className="hidden md:block">
-              <Link to="/" className="hover:underline">Logout</Link>
-            </li>
-            {/* Mobile menu button */}
-            <li className="md:hidden">
-              <button className="text-white text-2xl" onClick={toggleSidebar}>
-                ☰
-              </button>
-            </li>
-          </ul>
-        </div>
+        <ul>
+          <li className="hideOnMobile">
+            <Link to="/home" className={isActive('/home')}>Home</Link>
+          </li>
+          <li className="hideOnMobile">
+            <Link to="/yourpage" className={isActive('/yourpage')}>Your Page</Link>
+          </li>
+          <li className="hideOnMobile">
+            <Link to="/ourservice" className={isActive('/ourservice')}>Our Service</Link>
+          </li>
+          <li className="hideOnMobile">
+            <Link to="/aboutus" className={isActive('/aboutus')}>About Us</Link>
+          </li>
+          <li className="hideOnMobile">
+            <Link to="/" className={isActive('/')}>Logout</Link>
+          </li>
+          {/* Mobile menu button */}
+          <li>
+            <button className="menu-button" onClick={toggleSidebar}>
+              ☰
+            </button>
+          </li>
+        </ul>
       </nav>
 
       {/* Sidebar Menu (Mobile) */}
       <div className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
         <ul>
           <li>
-            <Link to="/home" onClick={toggleSidebar}>Home</Link>
+            <Link to="/home" onClick={toggleSidebar} className={isActive('/home')}>Home</Link>
           </li>
           <li>
-            <Link to="/yourpage" onClick={toggleSidebar}>Your Page</Link>
+            <Link to="/yourpage" onClick={toggleSidebar} className={isActive('/yourpage')}>Your Page</Link>
           </li>
           <li>
-            <Link to="/ourservice" onClick={toggleSidebar}>Our Service</Link>
+            <Link to="/ourservice" onClick={toggleSidebar} className={isActive('/ourservice')}>Our Service</Link>
           </li>
           <li>
-            <Link to="/aboutus" onClick={toggleSidebar}>About Us</Link>
+            <Link to="/aboutus" onClick={toggleSidebar} className={isActive('/aboutus')}>About Us</Link>
           </li>
-          
           <li>
-            <Link to="/" onClick={toggleSidebar}>Logout</Link>
+            <Link to="/" onClick={toggleSidebar} className={isActive('/')}>Logout</Link>
           </li>
         </ul>
       </div>

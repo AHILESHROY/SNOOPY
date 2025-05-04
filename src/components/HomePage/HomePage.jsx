@@ -47,32 +47,30 @@ const HomePage = () => {
   const [showPreferredAmountPopup, setShowPreferredAmountPopup] = useState(false);
   const [selectedProductForAmount, setSelectedProductForAmount] = useState(null);
 
-  useEffect(() => {
-    const fetchWishlistFromDB = async () => {
-      if (!userEmail) return;
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/wishlist?email=${encodeURIComponent(userEmail)}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+  // Fetch wishlist from backend
+  const fetchWishlistFromDB = async () => {
+    if (!userEmail) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/wishlist?email=${encodeURIComponent(userEmail)}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
         }
-
-        const data = await response.json();
-        if (data && Array.isArray(data)) {
-          setWishlist(data);
-        }
-      } catch (error) {
-        console.error('Error fetching wishlist from database:', error);
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
+      const data = await response.json();
+      if (data && Array.isArray(data)) {
+        setWishlist(data);
+      }
+    } catch (error) {
+      console.error('Error fetching wishlist from database:', error);
+    }
+  };
 
+  useEffect(() => {
     fetchWishlistFromDB();
   }, [userEmail]);
 
@@ -89,16 +87,16 @@ const HomePage = () => {
 
     try {
       const endpoint = action === 'add' ? '/add_to_list' : '/remove_from_list';
-      const productData = {
-        email: userEmail,
-        product_id: product.id,
-        product_name: product.name,
-        image_url: product.image,
-        price: product.price,
-        original_price: product.originalPrice,
-        platform: product.platform,
-        link: product.link
-      };
+      const productData = action === 'add'
+        ? {
+            email: userEmail,
+            u_id: product.id,
+            price: product.price
+          }
+        : {
+            email: userEmail,
+            u_id: product.id
+          };
 
       console.log('Sending to backend:', productData);
 
@@ -115,7 +113,18 @@ const HomePage = () => {
       console.log('Response from server:', responseText);
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}, message: ${responseText}`);
+        let errorMessage = `HTTP error! status: ${response.status}, message: ${responseText}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.detail && errorData.detail.includes('not found')) {
+            errorMessage = 'This product was not found in your wishlist.';
+          } else if (errorData.detail && errorData.detail.includes('duplicate key value violates unique constraint')) {
+            errorMessage = 'This product is already in your wishlist.';
+          } else if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch (e) {}
+        throw new Error(errorMessage);
       }
 
       try {
@@ -123,6 +132,11 @@ const HomePage = () => {
         console.log(`Wishlist ${action} successful:`, data);
       } catch (e) {
         console.log('Response was not JSON:', responseText);
+      }
+
+      // Always sync the wishlist after add/remove
+      if (action === 'add' || action === 'remove') {
+        await fetchWishlistFromDB();
       }
     } catch (error) {
       console.error(`Error ${action}ing to wishlist:`, error);
@@ -375,6 +389,7 @@ const HomePage = () => {
           onClose={() => setShowWishlistPopup(false)}
           onAmountChange={handlePreferredAmountConfirm}
           onRemove={handleRemoveFromWishlist}
+          userEmail={userEmail}
         />
       )}
 
@@ -386,6 +401,7 @@ const HomePage = () => {
             setSelectedProductForAmount(null);
           }}
           onConfirm={handlePreferredAmountConfirm}
+          userEmail={userEmail}
         />
       )}
     </div>

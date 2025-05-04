@@ -2,21 +2,114 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import './PreferredAmountPopup.css';
 
-const PreferredAmountPopup = ({ onClose, onConfirm, product }) => {
+const API_BASE_URL = 'http://13.203.223.3:8000';
+const API_TIMEOUT = 5000; // 5 seconds timeout
+
+const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
   const [amount, setAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const isEmailMissing = !userEmail || userEmail.trim() === '';
 
   useEffect(() => {
     // Set max amount to original price
     setMaxAmount(product.originalPrice);
   }, [product.originalPrice]);
 
-  const handleSubmit = (e) => {
+  const fetchWithTimeout = async (url, options) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
+  };
+
+  const retryOperation = async (operation, maxRetries = 3) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (i === maxRetries - 1) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const numAmount = parseFloat(amount);
+    
     if (numAmount >= 0 && numAmount <= maxAmount) {
-      onConfirm(amount);
-      onClose();
+      setIsLoading(true);
+      setError('');
+
+      try {
+        await retryOperation(async () => {
+          console.log('Sending request with payload:', {
+            email: userEmail,
+            u_id: product.uid || product.id,
+            price: numAmount
+          });
+
+          const response = await fetchWithTimeout(`${API_BASE_URL}/add_to_list`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              email: userEmail,
+              u_id: product.uid || product.id,
+              price: numAmount
+            })
+          });
+
+          const responseText = await response.text();
+          console.log('Raw API Response:', responseText);
+
+          if (!response.ok) {
+            let errorMessage = 'Failed to save preferred amount';
+            try {
+              const errorData = JSON.parse(responseText);
+              errorMessage = errorData.detail || errorData.message || errorMessage;
+            } catch (e) {
+              console.error('Error parsing error response:', e);
+            }
+            throw new Error(errorMessage);
+          }
+
+          try {
+            const data = JSON.parse(responseText);
+            if (data.message) {
+              console.log('Success:', data.message);
+            }
+          } catch (e) {
+            console.error('Error parsing success response:', e);
+          }
+        });
+
+        onConfirm(amount);
+        onClose();
+      } catch (error) {
+        console.error('Failed to save preferred amount:', error);
+        const errorMessage = typeof error === 'object' && error.message 
+          ? error.message 
+          : 'Failed to save preferred amount. Please try again.';
+        setError(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -39,6 +132,11 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product }) => {
           <br />
           Suggested range: $0 - ${product.originalPrice.toFixed(2)}
         </p>
+        {(error || isEmailMissing) && (
+          <div className="error-message">
+            {isEmailMissing ? 'You must be logged in to set a preferred amount.' : error}
+          </div>
+        )}
         <form onSubmit={handleSubmit}>
           <div className="input-container">
             <span className="currency-symbol">$</span>
@@ -51,11 +149,25 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product }) => {
               max={maxAmount}
               step="0.01"
               required
+              disabled={isLoading || isEmailMissing}
             />
           </div>
           <div className="popup-buttons">
-            <button type="submit" className="confirm-button">Confirm</button>
-            <button type="button" className="cancel-button" onClick={onClose}>Cancel</button>
+            <button 
+              type="submit" 
+              className="confirm-button"
+              disabled={isLoading || isEmailMissing}
+            >
+              {isLoading ? 'Saving...' : 'Confirm'}
+            </button>
+            <button 
+              type="button" 
+              className="cancel-button" 
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Cancel
+            </button>
           </div>
         </form>
       </div>
@@ -70,7 +182,10 @@ PreferredAmountPopup.propTypes = {
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
     price: PropTypes.number.isRequired,
+    originalPrice: PropTypes.number.isRequired,
+    uid: PropTypes.string.isRequired
   }).isRequired,
+  userEmail: PropTypes.string.isRequired
 };
 
-export default PreferredAmountPopup; 
+export default PreferredAmountPopup;  

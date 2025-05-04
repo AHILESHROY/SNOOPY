@@ -20,20 +20,27 @@ nav {
   top: 0;
   left: 0;
   width: 100%;
-  background-color: #d0d30a;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  background-color: #ffd700;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  padding: 15px 20px;
+  padding: 12px 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.3s ease;
 }
 
 /* Brand Name */
 .brand-name {
-  color:black;
-  font-size: 1.5rem;
-  font-weight: bold;
+  color: #000;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  position: relative;
+  padding-left: 0;
+  text-decoration: none;
+  pointer-events: none;
 }
 
 /* Navbar Items */
@@ -41,46 +48,89 @@ nav ul {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 15px;
+  gap: 20px;
   list-style: none;
+  margin-top: 4px;
 }
 
 nav li {
-  height: 50px;
+  height: 45px;
+  position: relative;
 }
 
 nav a {
   text-decoration: none;
-  color: white;
+  color: #000;
   font-size: 1rem;
-  padding: 10px 15px;
+  font-weight: 500;
+  padding: 10px 20px;
   transition: all 0.3s ease;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
 }
 
 /* Navbar Hover Effect */
 nav a:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
+  background-color: rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
-/* Hide Desktop Items on Mobile */
-@media (max-width: 768px) {
-  .hideOnMobile {
-      display: none;
-  }
+nav a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: #000;
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+nav a:hover::after {
+  width: 80%;
+}
+
+/* Active Link Styling */
+nav a.active {
+  background-color: rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+nav a.active::after {
+  width: 80%;
+}
+
+/* Menu Button (Mobile) */
+.menu-button {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: #000;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.menu-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
 }
 
 /* Sidebar Menu */
 .sidebar {
   position: fixed;
   top: 0;
-  right: -250px;
-  width: 200px;
+  right: -300px;
+  width: 280px;
   height: 100vh;
-  background-color: white;
-  box-shadow: -5px 0 10px rgba(0, 0, 0, 0.1);
+  background-color: #ffd700;
+  box-shadow: -5px 0 20px rgba(0, 0, 0, 0.15);
   transition: right 0.3s ease-in-out;
-  padding-top: 60px;
+  padding-top: 80px;
   z-index: 1000;
 }
 
@@ -97,55 +147,56 @@ nav a:hover {
 }
 
 .sidebar li {
-  padding: 15px 20px;
+  padding: 0;
+  margin: 5px 15px;
 }
 
 .sidebar a {
   text-decoration: none;
-  color: black;
+  color: #000;
   display: block;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  padding: 15px 20px;
+  border-radius: 8px;
   transition: all 0.3s ease;
+  font-weight: 500;
 }
 
 /* Sidebar Hover */
 .sidebar a:hover {
-  background-color: #f0f0f0;
-  padding-left: 25px;
+  background-color: rgba(0, 0, 0, 0.1);
+  transform: translateX(10px);
 }
 
-/* Menu Button (Mobile) */
-.menu-button {
-  display: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.5rem;
-  color: white;
-  transition: all 0.3s ease;
-}
-
-.menu-button:hover {
-  color: rgba(255, 255, 255, 0.8);
-}
-
+/* Media Queries */
 @media (max-width: 768px) {
+  nav {
+    padding: 10px 20px;
+  }
+  
+  .brand-name {
+    font-size: 1.5rem;
+  }
+  
   .menu-button {
-      display: block;
+    display: block;
+  }
+  
+  .hideOnMobile {
+    display: none;
   }
 }
 
-/* Make Sidebar Full Width on Small Screens */
 @media (max-width: 400px) {
   .sidebar {
-      width: 100%;
+    width: 100%;
   }
-}
-
-/* Active Link Styling */
-nav a.active,
-.sidebar a.active {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  font-weight: bold;
+  
+  nav {
+    padding: 8px 15px;
+  }
+  
+  .brand-name {
+    font-size: 1.3rem;
+  }
 }

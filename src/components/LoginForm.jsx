@@ -111,6 +111,9 @@ const SnoopyAuth = () => {
       // Fetch tracked objects (wishlist) using the user's email
       await fetchTrackedObjects(user.email);
 
+      // Store user email in localStorage for later use
+      localStorage.setItem('userEmail', user.email);
+
       setSuccess("Signed in with Google successfully!");
       setTimeout(() => navigate("/home"), 1000);
     } catch (err) {
@@ -178,6 +181,9 @@ const SnoopyAuth = () => {
       // Fetch tracked objects (wishlist) using the user's email
       await fetchTrackedObjects(user.email);
 
+      // Store user email in localStorage for later use
+      localStorage.setItem('userEmail', user.email);
+
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
       setSuccess("Account created successfully!");
       setTimeout(() => navigate("/home"), 1000);
@@ -216,6 +222,9 @@ const SnoopyAuth = () => {
 
       // Fetch tracked objects (wishlist) using the user's email
       await fetchTrackedObjects(user.email);
+
+      // Store user email in localStorage for later use
+      localStorage.setItem('userEmail', user.email);
 
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
       setSuccess("Signed in successfully!");

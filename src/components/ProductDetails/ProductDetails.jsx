@@ -191,7 +191,6 @@ const ProductDetails = ({ product, onClose }) => {
                     >
                       Buy Now
                     </a>
-                    
                   </div>
                 </div>
               </div>
