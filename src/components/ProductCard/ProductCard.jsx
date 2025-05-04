@@ -55,10 +55,10 @@ const ProductCard = ({ product, onViewClick, onWishlistToggle, isInWishlist }) =
 
           <div className="product-pricing">
             {product.originalPrice > 0 && (
-              <span className="original-price">${product.originalPrice.toFixed(2)}</span>
+              <span className="original-price">₹{product.originalPrice.toFixed(2)}</span>
             )}
             {product.price > 0 && (
-              <span className="discounted-price">${product.price.toFixed(2)}</span>
+              <span className="discounted-price">₹{product.price.toFixed(2)}</span>
             )}
             {product.discountRate !== "0%" && (
               <span className="discount-percent">{product.discountRate}</span>

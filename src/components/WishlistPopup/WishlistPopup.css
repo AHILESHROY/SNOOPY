@@ -192,6 +192,7 @@
   transition: all 0.3s ease;
   color:black;
   font-style: italic;
+  
 }
 
 .amount-display:hover {
@@ -217,7 +218,7 @@
   border: 1px solid #000000;
   border-radius: 4px;
   text-align: center;
-  font-size: 10px;
+  font-size: 17px;
   background: #fff;
   transition: all 0.3s ease;
 }

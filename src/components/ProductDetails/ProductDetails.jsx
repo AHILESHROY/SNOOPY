@@ -91,11 +91,11 @@ const ProductDetails = ({ product, onClose }) => {
                     <div className="price-container">
                       {product.originalPrice > 0 && (
                         <div className="original-price">
-                          Original Price: <span>${product.originalPrice.toFixed(2)}</span>
+                          Original Price: <span>₹{product.originalPrice.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="current-price">
-                        Current Price: <span>${product.price.toFixed(2)}</span>
+                        Current Price: <span>₹{product.price.toFixed(2)}</span>
                       </div>
                       {product.discountRate !== "0%" && (
                         <div className="discount-badge">

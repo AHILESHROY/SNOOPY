@@ -97,22 +97,22 @@ const WishlistPopup = ({ wishlist, onClose, onAmountChange, onRemove, userEmail 
         });
 
         const response = await fetchWithTimeout(`${API_BASE_URL}/add_to_list`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
             'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            email: userEmail,
+        },
+        body: JSON.stringify({
+          email: userEmail,
             u_id: productId,
             price: parseFloat(amount)
-          })
-        });
+        })
+      });
 
         const responseText = await response.text();
         console.log('Raw API Response:', responseText);
 
-        if (!response.ok) {
+      if (!response.ok) {
           let errorMessage = 'Failed to update amount';
           try {
             const errorData = JSON.parse(responseText);
@@ -131,7 +131,7 @@ const WishlistPopup = ({ wishlist, onClose, onAmountChange, onRemove, userEmail 
           }
         } catch (e) {
           console.error('Error parsing success response:', e);
-        }
+      }
       });
     } catch (error) {
       console.error('Failed to update amount:', error);
@@ -167,18 +167,18 @@ const WishlistPopup = ({ wishlist, onClose, onAmountChange, onRemove, userEmail 
         console.log('Remove request payload:', payload);
         const response = await fetchWithTimeout(`${API_BASE_URL}/remove_from_list`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        headers: {
+          'Content-Type': 'application/json',
             'Accept': 'application/json'
-          },
+        },
           body: JSON.stringify(payload)
-        });
+      });
 
-        if (!response.ok) {
+      if (!response.ok) {
           const errorData = await response.json();
           console.error('Remove API error response:', errorData);
           throw new Error(errorData.message || errorData.detail || 'Failed to remove item');
-        }
+      }
       });
 
       // Only remove from local state if API call is successful
@@ -208,7 +208,7 @@ const WishlistPopup = ({ wishlist, onClose, onAmountChange, onRemove, userEmail 
             {apiError}
           </div>
         )}
-
+        
         <div className="wishlist-table-container">
           <table className="wishlist-table">
             <thead>
@@ -239,9 +239,9 @@ const WishlistPopup = ({ wishlist, onClose, onAmountChange, onRemove, userEmail 
                     </td>
                     <td className="price">
                       {product.originalPrice > 0 && (
-                        <span className="original-price">${product.originalPrice.toFixed(2)}</span>
+                        <span className="original-price">₹{product.originalPrice.toFixed(2)}</span>
                       )}
-                      <span className="current-price">${product.price.toFixed(2)}</span>
+                      <span className="current-price">₹{product.price.toFixed(2)}</span>
                       {product.discountRate !== "0%" && (
                         <span className="discount">{product.discountRate}</span>
                       )}

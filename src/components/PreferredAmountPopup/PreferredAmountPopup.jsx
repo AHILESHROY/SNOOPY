@@ -128,9 +128,9 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
         <h3>Set Preferred Amount</h3>
         <p>Enter your preferred amount for {product.name}</p>
         <p className="price-info">
-          Current price: ${product.price.toFixed(2)}
+          Current price: ₹{product.price.toFixed(2)}
           <br />
-          Suggested range: $0 - ${product.originalPrice.toFixed(2)}
+          Suggested range: ₹0 - ₹{product.originalPrice.toFixed(2)}
         </p>
         {(error || isEmailMissing) && (
           <div className="error-message">
@@ -139,7 +139,7 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
         )}
         <form onSubmit={handleSubmit}>
           <div className="input-container">
-            <span className="currency-symbol">$</span>
+            <span className="currency-symbol">₹</span>
             <input
               type="number"
               value={amount}
