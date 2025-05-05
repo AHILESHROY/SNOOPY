@@ -58,14 +58,17 @@ const HomePage = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
+        console.log('Fetching products...');
 
         const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          }
+            'X-Requested-With': 'XMLHttpRequest',
+            'Access-Control-Allow-Origin': '*'
+          },
+          mode: 'cors'
         });
 
         if (!productsResponse.ok) {
@@ -73,17 +76,22 @@ const HomePage = () => {
         }
 
         const productsData = await productsResponse.json();
+        console.log('Products data received:', productsData);
 
         if (!productsData.data || !Array.isArray(productsData.data)) {
+          console.error('Invalid products data format:', productsData);
           throw new Error('Invalid data format received from server');
         }
 
+        console.log('Fetching prices...');
         const pricesResponse = await fetch(`${API_BASE_URL}/prices`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          mode: 'cors'
         });
 
         if (!pricesResponse.ok) {
@@ -91,6 +99,7 @@ const HomePage = () => {
         }
 
         const pricesData = await pricesResponse.json();
+        console.log('Prices data received:', pricesData);
         const priceHistoryMap = new Map();
 
         if (pricesData.data && Array.isArray(pricesData.data)) {
@@ -105,6 +114,7 @@ const HomePage = () => {
           });
         }
 
+        console.log('Transforming products...');
         const transformedProducts = productsData.data.map(product => ({
           id: product.u_id,
           name: product.product_name,
@@ -119,15 +129,21 @@ const HomePage = () => {
           priceHistory: priceHistoryMap.get(product.u_id) || generatePriceHistory(product)
         }));
 
+        console.log('Transformed products:', transformedProducts);
         setProducts(transformedProducts);
 
         const randomProducts = [...transformedProducts]
           .sort(() => 0.5 - Math.random())
           .slice(0, 20);
+        console.log('Random products selected:', randomProducts);
         setDisplayedProducts(randomProducts);
         setError(null);
       } catch (error) {
         console.error("Error fetching products:", error);
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack
+        });
         setError(`Error: ${error.message}. Please check your internet connection and try again.`);
         setProducts([]);
         setDisplayedProducts([]);
