@@ -47,21 +47,26 @@
   top: 2.5rem;
   right: 2rem;
   background: none;
-  
   font-size: 1.5rem;
   cursor: pointer;
-  color: black;
+  color:black !important;
   padding: 0.5rem;
   border-radius: 100%;
-  
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .close-button:hover {
-  background: #f5f5f5;
-  color: #333;
+  background: rgba(0, 0, 0, 0.1);
+  color:black;
   transform: scale(1.1);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 0, 0, 0.2);
 }
 
 .wishlist-table-container {

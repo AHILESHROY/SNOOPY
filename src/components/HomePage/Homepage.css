@@ -410,3 +410,12 @@ body::-webkit-scrollbar {
 .product-card-with-heart:last-child {
   animation: fadeIn 0.5s ease forwards;
 }
+
+/* Compare modal styles */
+.compare-modal-scrollable-content::-webkit-scrollbar {
+  display: none;
+}
+.compare-modal-scrollable-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}

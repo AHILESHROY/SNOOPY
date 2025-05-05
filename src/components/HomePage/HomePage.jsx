@@ -7,6 +7,7 @@ import ProductDetails from "../ProductDetails/ProductDetails";
 import WishlistPopup from "../WishlistPopup/WishlistPopup";
 import PreferredAmountPopup from "../PreferredAmountPopup/PreferredAmountPopup";
 import PropTypes from "prop-types";
+import { FaBalanceScale } from 'react-icons/fa';
 
 const API_BASE_URL = 'http://13.203.223.3:8000';
 
@@ -45,6 +46,9 @@ const HomePage = () => {
   });
   const [showPreferredAmountPopup, setShowPreferredAmountPopup] = useState(false);
   const [selectedProductForAmount, setSelectedProductForAmount] = useState(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareProducts, setCompareProducts] = useState([]);
+  const [showCompareModal, setShowCompareModal] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('wishlist', JSON.stringify(wishlist));
@@ -192,6 +196,24 @@ const HomePage = () => {
     setSelectedProduct(null);
   };
 
+  const handleCompareToggle = (product) => {
+    setCompareProducts(prev => {
+      if (prev.some(p => p.id === product.id)) {
+        return prev.filter(p => p.id !== product.id);
+      }
+      if (prev.length < 2) {
+        const newSelection = [...prev, product];
+        if (newSelection.length === 2) {
+          setShowCompareModal(true);
+        }
+        return newSelection;
+      }
+      return prev;
+    });
+  };
+
+  const closeCompareModal = () => setShowCompareModal(false);
+
   const filteredProducts = searchQuery
     ? products.filter((product) =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -246,6 +268,39 @@ const HomePage = () => {
           <div className="loading">Loading amazing products for you...</div>
         ) : (
           <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  setCompareMode((prev) => !prev);
+                  setCompareProducts([]);
+                }}
+                style={{
+                  background: compareMode ? '#ffd54f' : 'transparent',
+                  color: compareMode ? '#bfa600' : '#888',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 38,
+                  height: 38,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 22,
+                  cursor: 'pointer',
+                  boxShadow: compareMode ? '0 2px 8px #ffd54f55' : 'none',
+                  transition: 'background 0.2s, color 0.2s, box-shadow 0.2s',
+                  outline: 'none',
+                  marginRight: 2
+                }}
+                title={compareMode ? 'Disable Compare Mode' : 'Enable Compare Mode'}
+              >
+                <FaBalanceScale />
+              </button>
+              {compareMode && (
+                <span style={{ color: '#888', fontSize: 14 }}>
+                  Select up to 2 products to compare
+                </span>
+              )}
+            </div>
             <div className="products-grid">
               {filteredProducts.map((product) => (
                 <div key={product.id} className="product-card-with-heart">
@@ -254,6 +309,10 @@ const HomePage = () => {
                     onViewClick={handleViewProduct}
                     onWishlistToggle={handleWishlistToggle}
                     isInWishlist={wishlist.some(p => p.id === product.id)}
+                    isFromHomepage={true}
+                    showCompareIcon={compareMode}
+                    isCompared={compareProducts.some(p => p.id === product.id)}
+                    onCompareClick={() => handleCompareToggle(product)}
                   />
                 </div>
               ))}
@@ -268,6 +327,88 @@ const HomePage = () => {
                 >
                   {isLoadingMore ? 'Loading...' : 'Load More Products'}
                 </button>
+              </div>
+            )}
+
+            {showCompareModal && (
+              <div className="compare-modal-overlay" style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={closeCompareModal}>
+                <div className="compare-modal-advanced" style={{background:'#fff', borderRadius:20, padding:'40px 32px 32px 32px', minWidth:400, maxWidth:1200, boxShadow:'0 8px 32px rgba(0,0,0,0.18)', position:'relative', width:'96vw', overflowX:'auto'}} onClick={e => e.stopPropagation()}>
+                  <button onClick={closeCompareModal} style={{position:'absolute', top:22, right:22, background:'#ffd54f', border:'none', borderRadius:'50%', width:40, height:40, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, cursor:'pointer', boxShadow:'0 2px 8px #ffd54f55'}} title="Close">
+                    ×
+                  </button>
+                  <div style={{fontWeight:800, fontSize:26, marginBottom:22, textAlign:'center', letterSpacing:0.5}}>Product Comparison</div>
+                  <div style={{
+                    overflowX: 'auto',
+                    overflowY: 'auto',
+                    maxHeight: '70vh',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                  }}
+                  className="compare-modal-scrollable-content"
+                  >
+                    <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0, minWidth:600}}>
+                      <thead>
+                        <tr style={{background:'#fffde7'}}>
+                          <th style={{textAlign:'left', padding:'12px 14px', fontWeight:700, fontSize:16, color:'#bfa600', minWidth:140, position:'sticky', left:0, background:'#fffde7', zIndex:2}}>Attribute</th>
+                          {compareProducts.map(product => (
+                            <th key={product.id} style={{textAlign:'center', padding:'12px 14px', fontWeight:700, fontSize:16, minWidth:200, background:'#fffde7', position:'sticky', top:0, zIndex:1}}>
+                              <img src={product.image} alt={product.name} style={{width:70, height:70, objectFit:'contain', borderRadius:10, marginBottom:8, boxShadow:'0 1px 4px #ffd54f33'}} />
+                              <div style={{fontWeight:700, fontSize:16, color:'#222', marginBottom:2}}>{product.name}</div>
+                              <div style={{fontSize:14, color:'#888'}}>{product.platform}</div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* Deal Meter Row */}
+                        <tr>
+                          <td style={{padding:'12px 14px', fontWeight:600, background:'#fffde7', color:'#bfa600', borderRight:'1.5px solid #ffd54f', minWidth:140}}>
+                            🔥 Deal Meter
+                          </td>
+                          {compareProducts.map((p, idx) => {
+                            let dealScore = 0;
+                            if (p.originalPrice && p.price && p.originalPrice > p.price) {
+                              dealScore = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
+                            }
+                            let color = dealScore > 50 ? '#43a047' : dealScore > 20 ? '#ffa000' : '#e53935';
+                            return (
+                              <td key={idx} style={{padding:'12px 14px', textAlign:'center', background:'#fff', borderBottom:'1px solid #f3e99c'}}>
+                                <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4}}>
+                                  <div style={{width:90, height:10, background:'#f3f3f3', borderRadius:5, overflow:'hidden', marginBottom:4}}>
+                                    <div style={{width:`${dealScore}%`, height:'100%', background:color, borderRadius:5, transition:'width 0.3s'}}></div>
+                                  </div>
+                                  <span style={{fontWeight:700, color}}>{dealScore > 0 ? `${dealScore}/100` : 'No Deal'}</span>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                        {/* Attribute Rows */}
+                        {[
+                          { key: 'price', label: <span>Price</span>, get: p => p.price ? `₹${p.price}` : '—', icon: '💰' },
+                          { key: 'originalPrice', label: <span>Original Price</span>, get: p => p.originalPrice ? `₹${p.originalPrice}` : '—', icon: '🏷️' },
+                          { key: 'discount', label: <span>Discount</span>, get: p => p.discountRate || '—', icon: '🔖' },
+                          { key: 'brand', label: <span>Brand</span>, get: p => p.brand || '—', icon: '🏢' },
+                          { key: 'specs', label: <span>Specifications</span>, get: p => p.specs || '—', icon: '📋' },
+                          { key: 'availability', label: <span>Availability</span>, get: p => p.availability || '—', icon: '🚚' },
+                          { key: 'rating', label: <span>Rating</span>, get: p => p.rating ? `${p.rating} (${p.ratingCount} reviews)` : '—', icon: '⭐' },
+                          { key: 'offers', label: <span>Offers</span>, get: p => p.offers || '—', icon: '🎁' },
+                        ].map(attr => {
+                          const values = compareProducts.map(p => attr.get(p));
+                          const isDiff = values.length === 2 && values[0] !== values[1];
+                          return (
+                            <tr key={attr.key}>
+                              <td style={{padding:'12px 14px', fontWeight:600, background:'#fffde7', color:'#bfa600', borderRight:'1.5px solid #ffd54f', minWidth:140}}>{attr.icon} {attr.label}</td>
+                              {values.map((val, idx) => (
+                                <td key={idx} style={{padding:'12px 14px', textAlign:'center', background: isDiff ? '#fff9c4' : '#fff', fontWeight:isDiff ? 700 : 500, borderBottom:'1px solid #f3e99c'}}>{val}</td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
           </>
