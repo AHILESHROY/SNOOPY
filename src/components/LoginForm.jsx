@@ -15,15 +15,13 @@ const SnoopyAuth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
-  const [userInfo, setUserInfo] = useState(null); // Store fetched user info
-  const [trackedObjects, setTrackedObjects] = useState(null); // Store tracked objects (wishlist)
+  const [userInfo, setUserInfo] = useState(null);
+  const [trackedObjects, setTrackedObjects] = useState(null);
   const navigate = useNavigate();
   const API_BASE_URL = 'http://13.203.223.3:8000';
 
-  // Initialize Google provider
   const googleProvider = new GoogleAuthProvider();
 
-  // Generate shopping cart rain effect
   useEffect(() => {
     const generateCarts = () => {
       let cartElements = [];
@@ -41,7 +39,6 @@ const SnoopyAuth = () => {
     generateCarts();
   }, []);
 
-  // Password strength calculation (for sign-up only)
   useEffect(() => {
     let strength = 0;
     if (formData.password.length >= 8) strength++;
@@ -49,29 +46,26 @@ const SnoopyAuth = () => {
     if (/[0-9]/.test(formData.password)) strength++;
     if (/[^A-Za-z0-9]/.test(formData.password)) strength++;
     setPasswordStrength(Math.min(strength, 4));
-    console.log("Password Strength:", strength); // Debug password strength
+    console.log("Password Strength:", strength);
   }, [formData.password]);
 
-  // Handle input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    setSuccess(""); // Clear success message on input change
-    setError(""); // Clear error message on input change to prevent lingering errors
+    setSuccess("");
+    setError("");
   };
 
-  // Function to fetch tracked objects (wishlist) after sign-in
   const fetchTrackedObjects = async (email) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/get_tracked_objects`, { email });
       console.log("GET /get_tracked_objects response:", response.data);
-      setTrackedObjects(response.data.user_budgets[0]); // Store the tracked objects
+      setTrackedObjects(response.data.user_budgets[0]);
     } catch (err) {
       console.error("Error fetching tracked objects:", err.response?.data || err.message);
       setError("Failed to fetch tracked objects: " + (err.response?.data?.detail || err.message));
     }
   };
 
-  // Handle Google Sign-In/Sign-Up
   const handleGoogleSignIn = async () => {
     try {
       setError("");
@@ -81,7 +75,6 @@ const SnoopyAuth = () => {
       const user = result.user;
       console.log("Google Sign-In successful:", user);
 
-      // Log the payload being sent to the backend
       const payload = {
         firebase_uid: user.uid,
         email: user.email,
@@ -89,7 +82,6 @@ const SnoopyAuth = () => {
       };
       console.log("Sending POST /users payload:", payload);
 
-      // Attempt to send custom user info to FastAPI backend
       try {
         const postResponse = await axios.post(`${API_BASE_URL}/users`, payload);
         console.log("POST /users response:", postResponse.data);
@@ -98,20 +90,17 @@ const SnoopyAuth = () => {
         setError("Failed to save user info to backend: " + (postError.response?.data?.detail || postError.message));
       }
 
-      // Attempt to fetch custom user info after sign-in
       try {
         const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
         console.log("GET /users response:", getResponse.data);
         setUserInfo(getResponse.data);
+        localStorage.setItem('userInfo', JSON.stringify({ name: getResponse.data.name, email: getResponse.data.email }));
       } catch (getError) {
         console.error("Error fetching user from backend:", getError.response?.data || getError.message);
         setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
       }
 
-      // Fetch tracked objects (wishlist) using the user's email
       await fetchTrackedObjects(user.email);
-
-      // Store user email in localStorage for later use
       localStorage.setItem('userEmail', user.email);
 
       setSuccess("Signed in with Google successfully!");
@@ -129,11 +118,9 @@ const SnoopyAuth = () => {
     }
   };
 
-  // Handle sign-up submission with Firebase
   const handleSignUp = async (e) => {
     e.preventDefault();
 
-    // Validate passwords on submission
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords don't match!");
       return;
@@ -151,7 +138,6 @@ const SnoopyAuth = () => {
       const user = userCredential.user;
       console.log("Firebase sign-up successful:", user);
 
-      // Log the payload being sent to the backend
       const payload = {
         firebase_uid: user.uid,
         email: user.email,
@@ -159,7 +145,6 @@ const SnoopyAuth = () => {
       };
       console.log("Sending POST /users payload:", payload);
 
-      // Attempt to send custom user info to FastAPI backend
       try {
         const postResponse = await axios.post(`${API_BASE_URL}/users`, payload);
         console.log("POST /users response:", postResponse.data);
@@ -168,20 +153,17 @@ const SnoopyAuth = () => {
         setError("Failed to save user info to backend: " + (postError.response?.data?.detail || postError.message));
       }
 
-      // Attempt to fetch custom user info after sign-up
       try {
         const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
         console.log("GET /users response:", getResponse.data);
         setUserInfo(getResponse.data);
+        localStorage.setItem('userInfo', JSON.stringify({ name: getResponse.data.name, email: getResponse.data.email }));
       } catch (getError) {
         console.error("Error fetching user from backend:", getError.response?.data || getError.message);
         setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
       }
 
-      // Fetch tracked objects (wishlist) using the user's email
       await fetchTrackedObjects(user.email);
-
-      // Store user email in localStorage for later use
       localStorage.setItem('userEmail', user.email);
 
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
@@ -199,7 +181,6 @@ const SnoopyAuth = () => {
     }
   };
 
-  // Handle sign-in submission with Firebase
   const handleSignIn = async (e) => {
     e.preventDefault();
 
@@ -210,20 +191,17 @@ const SnoopyAuth = () => {
       const user = userCredential.user;
       console.log("Firebase login successful:", user);
 
-      // Attempt to fetch custom user info from FastAPI backend
       try {
         const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
         console.log("GET /users response:", getResponse.data);
         setUserInfo(getResponse.data);
+        localStorage.setItem('userInfo', JSON.stringify({ name: getResponse.data.name, email: getResponse.data.email }));
       } catch (getError) {
         console.error("Error fetching user from backend:", getError.response?.data || getError.message);
         setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
       }
 
-      // Fetch tracked objects (wishlist) using the user's email
       await fetchTrackedObjects(user.email);
-
-      // Store user email in localStorage for later use
       localStorage.setItem('userEmail', user.email);
 
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
@@ -241,7 +219,6 @@ const SnoopyAuth = () => {
     }
   };
 
-  // Handle password reset
   const handlePasswordReset = async () => {
     console.log("handlePasswordReset called with email:", formData.email);
     if (!formData.email) {
@@ -265,14 +242,12 @@ const SnoopyAuth = () => {
     }
   };
 
-  // Function to get strength class for the password strength bar (for sign-up only)
   const getStrengthClass = (strength) => {
     return ["weak", "fair", "good", "strong", "very-strong"][strength];
   };
 
   return (
     <div className={`container ${isSignUp ? "active" : ""}`} id="container">
-      {/* Shopping Cart Rain Effect */}
       <div className="cart-rain-container">
         {carts.map((cart) => (
           <i
@@ -287,7 +262,6 @@ const SnoopyAuth = () => {
         ))}
       </div>
 
-      {/* Sign-Up Form */}
       <div className="form-container sign-up">
         <form onSubmit={handleSignUp} noValidate>
           <h1 className="Create_Account">Create Account</h1>
@@ -384,7 +358,6 @@ const SnoopyAuth = () => {
         </form>
       </div>
 
-      {/* Sign-In Form */}
       <div className="form-container sign-in">
         <form onSubmit={handleSignIn} noValidate>
           <h1>Sign In</h1>
@@ -437,7 +410,6 @@ const SnoopyAuth = () => {
         </form>
       </div>
 
-      {/* Toggle Panels */}
       <div className="toggle-container">
         <div className="toggle">
           <div className="toggle-panel toggle-left">
@@ -458,7 +430,6 @@ const SnoopyAuth = () => {
         </div>
       </div>
 
-      {/* Display User Info and Tracked Objects */}
       {(userInfo || trackedObjects) && (
         <div className="user-info">
           {userInfo && (
@@ -487,7 +458,6 @@ const SnoopyAuth = () => {
         </div>
       )}
 
-      {/* Toast Notification for Success Messages */}
       {success && (
         <div className="toast-notification success">
           {success}

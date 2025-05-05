@@ -868,4 +868,22 @@ YourPage.propTypes = {
   )
 };
 
+YourPage.propTypes = {
+  wishlist: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      name: PropTypes.string.isRequired,
+      image: PropTypes.string.isRequired,
+      price: PropTypes.number,
+      originalPrice: PropTypes.number,
+      rating: PropTypes.number,
+      ratingCount: PropTypes.number,
+      platform: PropTypes.string,
+      link: PropTypes.string,
+      preferredAmount: PropTypes.number,
+      dateAdded: PropTypes.number
+    })
+  )
+};
+
 export default YourPage;
