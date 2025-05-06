@@ -52,7 +52,7 @@ body {
 }
 
 .container form {
-    background-color: white;
+    background-color:white;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -63,13 +63,19 @@ body {
 
 .container input {
     background-color: #eee;
-    border: none;
+    border: 2px solid #ccc;
     margin: 8px 0;
     padding: 10px 15px;
     font-size: 13px;
     border-radius: 8px;
     width: 100%;
     outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.container input:focus {
+    border-color: rgb(255, 196, 0);
+    box-shadow: 0 0 5px rgba(255, 196, 0, 0.3);
 }
 
 .form-container {
@@ -521,4 +527,3 @@ body {
 .Create_Account{
     margin-bottom: 0px;
 }
-

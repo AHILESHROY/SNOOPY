@@ -58,8 +58,6 @@ const YourPage = () => {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [wishlistPlatformFilter, setWishlistPlatformFilter] = useState('All');
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncError, setSyncError] = useState(null);
 
   // Load user info from localStorage
   useEffect(() => {
@@ -79,79 +77,6 @@ const YourPage = () => {
       setProfileError('Failed to load user profile.');
     }
   }, []);
-
-  // Add polling mechanism for wishlist sync
-  useEffect(() => {
-    const fetchWishlist = async () => {
-      if (!userInfo?.email) return;
-      
-      try {
-        const response = await axios.post(`${API_BASE_URL}/get_tracked_objects`, { 
-          email: userInfo.email 
-        });
-        
-        if (response.data?.user_budgets?.[0]) {
-          const trackedObjects = response.data.user_budgets[0];
-          const wishlistItems = trackedObjects.u_id.map((id, index) => ({
-            id,
-            name: trackedObjects.product_name?.[index] || 'Unknown Product',
-            image: trackedObjects.image_url?.[index] || '',
-            price: trackedObjects.product_price?.[index] || 0,
-            platform: trackedObjects.platform?.[index] || 'Unknown',
-            preferredAmount: trackedObjects.preferred_amount?.[index] || null,
-            dateAdded: trackedObjects.date_added?.[index] || Date.now(),
-            link: trackedObjects.link?.[index] || '',
-            originalPrice: trackedObjects.original_price?.[index] || 0,
-            rating: trackedObjects.ratings?.[index] || 0,
-            ratingCount: trackedObjects.number_of_ratings?.[index] || 0,
-            discountRate: trackedObjects.discount_rate?.[index] || "0%"
-          }));
-
-          // Fetch additional product details for each item
-          const productsResponse = await axios.get(`${API_BASE_URL}/products_complete`);
-          if (productsResponse.data?.data) {
-            const productsMap = new Map(productsResponse.data.data.map(p => [p.u_id, p]));
-            
-            // Update wishlist items with complete product data
-            const updatedWishlistItems = wishlistItems.map(item => {
-              const completeProduct = productsMap.get(item.id);
-              if (completeProduct) {
-                return {
-                  ...item,
-                  name: completeProduct.product_name || item.name,
-                  image: completeProduct.image_url || item.image,
-                  price: completeProduct.price || item.price,
-                  platform: completeProduct.platform || item.platform,
-                  link: completeProduct.link || item.link,
-                  originalPrice: completeProduct.original_price || item.originalPrice,
-                  rating: completeProduct.ratings || item.rating,
-                  ratingCount: completeProduct.number_of_ratings || item.ratingCount,
-                  discountRate: completeProduct.discount_rate || item.discountRate
-                };
-              }
-              return item;
-            });
-            
-            setWishlist(updatedWishlistItems);
-            localStorage.setItem('wishlist', JSON.stringify(updatedWishlistItems));
-          } else {
-            setWishlist(wishlistItems);
-            localStorage.setItem('wishlist', JSON.stringify(wishlistItems));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching wishlist:', error);
-      }
-    };
-
-    // Initial fetch
-    fetchWishlist();
-
-    // Set up polling every 5 seconds
-    const pollInterval = setInterval(fetchWishlist, 5000);
-
-    return () => clearInterval(pollInterval);
-  }, [userInfo?.email]);
 
   // Fetch recommended products with fallback
   const fetchRecommendedProducts = async () => {
@@ -241,7 +166,41 @@ const YourPage = () => {
     fetchRecommendedProducts();
   }, []);
 
-  // Save wishlist to localStorage
+  // Add a function to handle wishlist updates
+  const handleWishlistUpdate = (productId, newAmount) => {
+    setWishlist(prev => {
+      const updatedWishlist = prev.map(item =>
+        item.id === productId
+          ? { ...item, preferredAmount: parseFloat(newAmount) }
+          : item
+      );
+      // Update localStorage
+      localStorage.setItem('wishlist', JSON.stringify(updatedWishlist));
+      return updatedWishlist;
+    });
+  };
+
+  // Modify the handlePreferredAmountChange function
+  const handlePreferredAmountChange = (productId, value) => {
+    handleWishlistUpdate(productId, value);
+  };
+
+  // Add an effect to sync with localStorage on mount
+  useEffect(() => {
+    const savedWishlist = localStorage.getItem('wishlist');
+    if (savedWishlist) {
+      try {
+        const parsedWishlist = JSON.parse(savedWishlist);
+        if (Array.isArray(parsedWishlist)) {
+          setWishlist(parsedWishlist);
+        }
+      } catch (error) {
+        console.error('Error parsing wishlist from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Add an effect to sync with localStorage on changes
   useEffect(() => {
     localStorage.setItem('wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
@@ -254,59 +213,15 @@ const YourPage = () => {
     setSelectedProduct(null);
   };
 
-  // Update handleRemoveFromWishlist to sync with backend
-  const handleRemoveFromWishlist = async (product) => {
-    try {
-      await axios.post(`${API_BASE_URL}/remove_from_list`, {
-        email: userInfo.email,
-        u_id: product.id
-      });
-      
-      setWishlist(prev => prev.filter(p => p.id !== product.id));
-    } catch (error) {
-      console.error('Error removing from wishlist:', error);
-    }
+  const handleRemoveFromWishlist = (product) => {
+    setWishlist(prev => prev.filter(p => p.id !== product.id));
   };
 
-  // Update handlePreferredAmountChange to sync with backend
-  const handlePreferredAmountChange = async (productId, value) => {
-    try {
-      const amount = value ? parseFloat(value) : null;
-      
-      await axios.post(`${API_BASE_URL}/add_to_list`, {
-        email: userInfo.email,
-        u_id: productId,
-        price: amount
-      });
-      
-      setWishlist(prev =>
-        prev.map(item =>
-          item.id === productId
-            ? { ...item, preferredAmount: amount }
-            : item
-        )
-      );
-    } catch (error) {
-      console.error('Error updating preferred amount:', error);
-    }
-  };
-
-  // Update handleAddToWishlist to sync with backend
-  const handleAddToWishlist = async (product) => {
-    try {
-      await axios.post(`${API_BASE_URL}/add_to_list`, {
-        email: userInfo.email,
-        u_id: product.id,
-        price: product.preferredAmount || product.price
-      });
-      
-      setWishlist(prev => {
-        if (prev.some(item => item.id === product.id)) return prev;
-        return [...prev, { ...product, dateAdded: Date.now() }];
-      });
-    } catch (error) {
-      console.error('Error adding to wishlist:', error);
-    }
+  const handleAddToWishlist = (product) => {
+    setWishlist(prev => {
+      if (prev.some(item => item.id === product.id)) return prev;
+      return [...prev, { ...product, dateAdded: Date.now() }];
+    });
   };
 
   const handleProfileEditToggle = () => {
@@ -533,157 +448,6 @@ const YourPage = () => {
     }
   };
 
-  // Function to sync wishlist with backend
-  const syncWishlistWithBackend = async () => {
-    try {
-      setIsSyncing(true);
-      setSyncError(null);
-      console.log('Starting wishlist sync...');
-
-      // Get user email from localStorage
-      const userEmail = localStorage.getItem('userEmail');
-      console.log('User email:', userEmail);
-      
-      if (!userEmail) {
-        throw new Error('User email not found. Please log in again.');
-      }
-
-      // Send request to backend
-      console.log('Sending request to backend...');
-      const response = await fetch(`${API_BASE_URL}/get_tracked_objects`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ email: userEmail })
-      });
-
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Backend response:', data);
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Failed to sync wishlist');
-      }
-      
-      // Merge backend wishlist with local wishlist
-      if (data.user_budgets && Array.isArray(data.user_budgets)) {
-        console.log('Processing backend wishlist items:', data.user_budgets.length);
-        
-        const backendWishlist = data.user_budgets.map(item => ({
-          id: item.product_id,
-          name: item.product_name,
-          image: item.image_url,
-          price: item.price || 0,
-          originalPrice: item.original_price || 0,
-          rating: item.ratings || 0,
-          ratingCount: item.number_of_ratings || 0,
-          discountRate: item.discount_rate || "0%",
-          platform: item.platform,
-          link: item.link,
-          preferredAmount: item.preferred_amount || null,
-          dateAdded: item.date_added || Date.now()
-        }));
-
-        console.log('Mapped backend items:', backendWishlist);
-
-        // Merge with local wishlist, keeping local preferences
-        const mergedWishlist = [...wishlist];
-        let newItemsCount = 0;
-
-        backendWishlist.forEach(backendItem => {
-          const existingIndex = mergedWishlist.findIndex(item => item.id === backendItem.id);
-          if (existingIndex === -1) {
-            mergedWishlist.push(backendItem);
-            newItemsCount++;
-          }
-        });
-
-        console.log('Merged wishlist:', {
-          totalItems: mergedWishlist.length,
-          newItemsAdded: newItemsCount,
-          localItems: wishlist.length
-        });
-
-        setWishlist(mergedWishlist);
-        localStorage.setItem('wishlist', JSON.stringify(mergedWishlist));
-        
-        // Show success message
-        setSyncError(`Successfully synced! Added ${newItemsCount} new items.`);
-        setTimeout(() => setSyncError(null), 3000);
-      } else {
-        console.warn('No user_budgets array in response');
-        setSyncError('No items found in backend');
-      }
-    } catch (error) {
-      console.error('Error syncing wishlist:', error);
-      setSyncError(`Sync failed: ${error.message}`);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Add sync button to the UI
-  const renderSyncButton = () => (
-    <button 
-      onClick={syncWishlistWithBackend}
-      disabled={isSyncing}
-      className="sync-button"
-      style={{
-        background: '#ffd54f',
-        color: '#000',
-        border: 'none',
-        padding: '8px 16px',
-        borderRadius: '8px',
-        fontWeight: 600,
-        cursor: isSyncing ? 'not-allowed' : 'pointer',
-        opacity: isSyncing ? 0.7 : 1,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        transition: 'all 0.2s ease'
-      }}
-    >
-      {isSyncing ? (
-        <>
-          <span className="loading-spinner" style={{
-            width: '16px',
-            height: '16px',
-            border: '2px solid #000',
-            borderTopColor: 'transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }} />
-          Syncing...
-        </>
-      ) : (
-        'Sync Wishlist'
-      )}
-    </button>
-  );
-
-  // Add sync status message
-  const renderSyncStatus = () => {
-    if (syncError) {
-      const isSuccess = syncError.startsWith('Successfully synced!');
-      return (
-        <div 
-          className="sync-error" 
-          style={{ 
-            color: isSuccess ? '#43a047' : '#e53935',
-            marginTop: '8px',
-            fontWeight: 500,
-            fontSize: '14px'
-          }}
-        >
-          {syncError}
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="yourpage-container">
       <Navbar />
@@ -734,10 +498,6 @@ const YourPage = () => {
                   </button>
                 </div>
               )}
-              <div style={{ marginTop: '16px' }}>
-                {renderSyncButton()}
-                {renderSyncStatus()}
-              </div>
             </div>
           ) : (
             <p className="profile-error">Loading profile...</p>

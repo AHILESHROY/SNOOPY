@@ -56,10 +56,9 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
 
       try {
         await retryOperation(async () => {
-          const productId = product.uid || product.id;
           console.log('Sending request with payload:', {
             email: userEmail,
-            u_id: productId,
+            u_id: product.uid || product.id,
             price: numAmount
           });
 
@@ -71,7 +70,7 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
             },
             body: JSON.stringify({
               email: userEmail,
-              u_id: productId,
+              u_id: product.uid || product.id,
               price: numAmount
             })
           });
@@ -184,7 +183,7 @@ PreferredAmountPopup.propTypes = {
     name: PropTypes.string.isRequired,
     price: PropTypes.number.isRequired,
     originalPrice: PropTypes.number.isRequired,
-    uid: PropTypes.string
+    uid: PropTypes.string.isRequired
   }).isRequired,
   userEmail: PropTypes.string.isRequired
 };

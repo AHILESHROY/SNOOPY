@@ -140,103 +140,6 @@ const HomePage = () => {
     fetchProducts();
   }, []);
 
-  useEffect(() => {
-    const fetchWishlist = async () => {
-      if (!userEmail) return;
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/get_tracked_objects`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ email: userEmail })
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (data?.user_budgets?.[0]) {
-          const trackedObjects = data.user_budgets[0];
-          const wishlistItems = trackedObjects.u_id.map((id, index) => ({
-            id,
-            name: trackedObjects.product_name?.[index] || 'Unknown Product',
-            image: trackedObjects.image_url?.[index] || '',
-            price: trackedObjects.product_price?.[index] || 0,
-            platform: trackedObjects.platform?.[index] || 'Unknown',
-            preferredAmount: trackedObjects.preferred_amount?.[index] || null,
-            dateAdded: trackedObjects.date_added?.[index] || Date.now(),
-            link: trackedObjects.link?.[index] || '',
-            originalPrice: trackedObjects.original_price?.[index] || 0,
-            rating: trackedObjects.ratings?.[index] || 0,
-            ratingCount: trackedObjects.number_of_ratings?.[index] || 0,
-            discountRate: trackedObjects.discount_rate?.[index] || "0%"
-          }));
-
-          // Fetch additional product details for each item
-          const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          });
-
-          if (productsResponse.ok) {
-            const productsData = await productsResponse.json();
-            if (productsData?.data) {
-              const productsMap = new Map(productsData.data.map(p => [p.u_id, p]));
-              
-              // Update wishlist items with complete product data
-              const updatedWishlistItems = wishlistItems.map(item => {
-                const completeProduct = productsMap.get(item.id);
-                if (completeProduct) {
-                  return {
-                    ...item,
-                    name: completeProduct.product_name || item.name,
-                    image: completeProduct.image_url || item.image,
-                    price: completeProduct.price || item.price,
-                    platform: completeProduct.platform || item.platform,
-                    link: completeProduct.link || item.link,
-                    originalPrice: completeProduct.original_price || item.originalPrice,
-                    rating: completeProduct.ratings || item.rating,
-                    ratingCount: completeProduct.number_of_ratings || item.ratingCount,
-                    discountRate: completeProduct.discount_rate || item.discountRate
-                  };
-                }
-                return item;
-              });
-              
-              setWishlist(updatedWishlistItems);
-              localStorage.setItem('wishlist', JSON.stringify(updatedWishlistItems));
-            } else {
-              setWishlist(wishlistItems);
-              localStorage.setItem('wishlist', JSON.stringify(wishlistItems));
-            }
-          } else {
-            setWishlist(wishlistItems);
-            localStorage.setItem('wishlist', JSON.stringify(wishlistItems));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching wishlist:', error);
-      }
-    };
-
-    // Initial fetch
-    fetchWishlist();
-
-    // Set up polling every 5 seconds
-    const pollInterval = setInterval(fetchWishlist, 5000);
-
-    return () => clearInterval(pollInterval);
-  }, [userEmail]);
-
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };
@@ -265,61 +168,20 @@ const HomePage = () => {
     }
   };
 
-  const handleWishlistToggle = async (product) => {
+  const handleWishlistToggle = (product) => {
     const isInWishlist = wishlist.some(p => p.id === product.id);
     if (isInWishlist) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/remove_from_list`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            email: userEmail,
-            u_id: product.id
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        setWishlist(prev => prev.filter(p => p.id !== product.id));
-      } catch (error) {
-        console.error('Error removing from wishlist:', error);
-      }
+      setWishlist(prev => prev.filter(p => p.id !== product.id));
     } else {
       setSelectedProductForAmount(product);
       setShowPreferredAmountPopup(true);
     }
   };
 
-  const handlePreferredAmountConfirm = async (amount) => {
+  const handlePreferredAmountConfirm = (amount) => {
     if (selectedProductForAmount) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/add_to_list`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            email: userEmail,
-            u_id: selectedProductForAmount.id,
-            price: amount
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const productWithAmount = { ...selectedProductForAmount, preferredAmount: amount };
-        setWishlist(prev => [...prev, productWithAmount]);
-      } catch (error) {
-        console.error('Error adding to wishlist:', error);
-      }
+      const productWithAmount = { ...selectedProductForAmount, preferredAmount: amount };
+      setWishlist(prev => [...prev, productWithAmount]);
     }
   };
 
@@ -387,6 +249,17 @@ const HomePage = () => {
             <span className="wishlist-count">{wishlist.length}</span>
           )}
         </div>
+
+        <div
+          className={`compare-icon ${compareMode ? 'active' : ''}`}
+          onClick={() => {
+            setCompareMode(prev => !prev);
+            setCompareProducts([]);
+          }}
+          title={compareMode ? "Exit Compare Mode" : "Enter Compare Mode"}
+        >
+          <FaBalanceScale />
+        </div>
       </div>
 
       <div className="content">
@@ -408,32 +281,6 @@ const HomePage = () => {
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
-              <button
-                onClick={() => {
-                  setCompareMode((prev) => !prev);
-                  setCompareProducts([]);
-                }}
-                style={{
-                  background: compareMode ? '#ffd54f' : 'transparent',
-                  color: compareMode ? '#bfa600' : '#888',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: 38,
-                  height: 38,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 22,
-                  cursor: 'pointer',
-                  boxShadow: compareMode ? '0 2px 8px #ffd54f55' : 'none',
-                  transition: 'background 0.2s, color 0.2s, box-shadow 0.2s',
-                  outline: 'none',
-                  marginRight: 2
-                }}
-                title={compareMode ? 'Disable Compare Mode' : 'Enable Compare Mode'}
-              >
-                <FaBalanceScale />
-              </button>
               {compareMode && (
                 <span style={{ color: '#888', fontSize: 14 }}>
                   Select up to 2 products to compare
@@ -557,75 +404,78 @@ const HomePage = () => {
                                 borderRadius: '12px',
                                 boxSizing: 'border-box'
                               }}>
-                                {compareProducts.length === 2 && (
-                                  <div style={{ 
-                                    height: '100%', 
-                                    display: 'flex', 
-                                    flexDirection: 'column', 
-                                    gap: '20px',
-                                    background: '#f9f9f9',
-                                    borderRadius: '12px',
-                                    padding: '16px 12px 8px 12px'
-                                  }}>
-                                    <h3 style={{ 
-                                      margin: '0 0 10px 0',
-                                      fontSize: '18px',
-                                      color: '#222',
-                                      fontWeight: '600',
-                                      textAlign: 'center'
-                                    }}>Price History Comparison</h3>
-                                    <div style={{ flex: 1 }}>
-                                      <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart
-                                          margin={{ top: 10, right: 20, left: 20, bottom: 20 }}
-                                        >
-                                          <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
-                                          <XAxis 
-                                            dataKey="date" 
-                                            tick={{ fontSize: 12 }}
-                                            interval="preserveStartEnd"
-                                            stroke="#666"
-                                          />
-                                          <YAxis 
-                                            tick={{ fontSize: 12 }}
-                                            domain={[
-                                              (dataMin) => Math.floor(dataMin * 0.9),
-                                              (dataMax) => Math.ceil(dataMax * 1.1)
-                                            ]}
-                                            stroke="#666"
-                                          />
-                                          <Tooltip 
-                                            formatter={(value) => `₹${value}`}
-                                            labelFormatter={(label) => `Date: ${label}`}
-                                            contentStyle={{
-                                              background: '#fff',
-                                              border: '1px solid #eee',
-                                              borderRadius: '8px',
-                                              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                                            }}
-                                          />
-                                          <Legend 
-                                            wrapperStyle={{
-                                              paddingTop: '10px'
-                                            }}
-                                          />
-                                          {compareProducts.map((product, index) => (
-                                            <Line
-                                              key={product.id}
-                                              data={product.priceHistory}
-                                              dataKey="price"
-                                              name={`${product.name} (${product.platform})`}
-                                              stroke={index === 0 ? '#27ae60' : '#e74c3c'}
-                                              strokeWidth={2}
-                                              dot={{ r: 3, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
-                                              activeDot={{ r: 5, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
-                                            />
-                                          ))}
-                                        </LineChart>
-                                      </ResponsiveContainer>
-                                    </div>
-                                  </div>
-                                )}
+                                <h3 style={{
+                                  margin: '0 0 16px 0',
+                                  fontSize: '18px',
+                                  color: '#222',
+                                  fontWeight: '600',
+                                  textAlign: 'center'
+                                }}>Price History Comparison</h3>
+                                <div style={{ flex: 1 }}>
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart
+                                      margin={{ top: 10, right: 20, left: 20, bottom: 20 }}
+                                    >
+                                      <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
+                                      <XAxis 
+                                        dataKey="date" 
+                                        tick={{ fontSize: 12 }}
+                                        interval="preserveStartEnd"
+                                        stroke="#666"
+                                        tickFormatter={(value) => {
+                                          const date = new Date(value);
+                                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                        }}
+                                      />
+                                      <YAxis 
+                                        tick={{ fontSize: 12 }}
+                                        domain={[
+                                          (dataMin) => Math.floor(dataMin * 0.9),
+                                          (dataMax) => Math.ceil(dataMax * 1.1)
+                                        ]}
+                                        stroke="#666"
+                                        tickFormatter={(value) => `₹${value}`}
+                                      />
+                                      <Tooltip 
+                                        formatter={(value) => [`₹${value}`, 'Price']}
+                                        labelFormatter={(label) => {
+                                          const date = new Date(label);
+                                          return date.toLocaleDateString('en-US', { 
+                                            month: 'short', 
+                                            day: 'numeric',
+                                            year: 'numeric'
+                                          });
+                                        }}
+                                        contentStyle={{
+                                          background: '#fff',
+                                          border: '1px solid #eee',
+                                          borderRadius: '8px',
+                                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                          padding: '8px 12px'
+                                        }}
+                                      />
+                                      <Legend 
+                                        wrapperStyle={{
+                                          paddingTop: '10px',
+                                          fontSize: '12px'
+                                        }}
+                                      />
+                                      {compareProducts.map((product, index) => (
+                                        <Line
+                                          key={product.id}
+                                          data={product.priceHistory}
+                                          dataKey="price"
+                                          name={`${product.name} (${product.platform})`}
+                                          stroke={index === 0 ? '#27ae60' : '#e74c3c'}
+                                          strokeWidth={2}
+                                          dot={{ r: 3, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
+                                          activeDot={{ r: 5, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
+                                          animationDuration={300}
+                                        />
+                                      ))}
+                                    </LineChart>
+                                  </ResponsiveContainer>
+                                </div>
                               </div>
                             </div>
                           </td>

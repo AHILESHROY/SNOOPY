@@ -95,7 +95,8 @@
 
 .confirm-button {
   background-color: #007bff;
-  color: white;
+  color: black;
+  font-weight: 500;
 }
 
 .confirm-button:hover {
@@ -103,8 +104,8 @@
 }
 
 .cancel-button {
-  background-color: #e9ecef;
-  color: #333;
+  background-color:yellow!important;
+  color:black!important;
 }
 
 .cancel-button:hover {
