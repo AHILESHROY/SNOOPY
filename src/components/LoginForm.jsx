@@ -138,30 +138,33 @@ const SnoopyAuth = () => {
       const user = userCredential.user;
       console.log("Firebase sign-up successful:", user);
 
-      // Store user info in localStorage immediately
-      const userInfo = {
-        name: formData.name,
+      const payload = {
+        firebase_uid: user.uid,
         email: user.email,
-        firebase_uid: user.uid
+        name: formData.name,
       };
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      localStorage.setItem('userEmail', user.email);
-      setUserInfo(userInfo);
+      console.log("Sending POST /users payload:", payload);
 
-      // Try to save to backend, but don't block on failure
       try {
-        const payload = {
-          firebase_uid: user.uid,
-          email: user.email,
-          name: formData.name,
-        };
-        console.log("Sending POST /users payload:", payload);
         const postResponse = await axios.post(`${API_BASE_URL}/users`, payload);
         console.log("POST /users response:", postResponse.data);
       } catch (postError) {
         console.error("Error posting user to backend:", postError.response?.data || postError.message);
-        // Don't set error, just log it
+        setError("Failed to save user info to backend: " + (postError.response?.data?.detail || postError.message));
       }
+
+      try {
+        const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
+        console.log("GET /users response:", getResponse.data);
+        setUserInfo(getResponse.data);
+        localStorage.setItem('userInfo', JSON.stringify({ name: getResponse.data.name, email: getResponse.data.email }));
+      } catch (getError) {
+        console.error("Error fetching user from backend:", getError.response?.data || getError.message);
+        setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
+      }
+
+      await fetchTrackedObjects(user.email);
+      localStorage.setItem('userEmail', user.email);
 
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
       setSuccess("Account created successfully!");
@@ -188,28 +191,17 @@ const SnoopyAuth = () => {
       const user = userCredential.user;
       console.log("Firebase login successful:", user);
 
-      // Create user info object with fallback values
-      const userInfo = {
-        name: user.displayName || formData.email.split('@')[0],
-        email: user.email,
-        firebase_uid: user.uid
-      };
-
-      // Try to get user info from backend, but don't block on failure
       try {
         const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
         console.log("GET /users response:", getResponse.data);
-        if (getResponse.data && getResponse.data.name) {
-          userInfo.name = getResponse.data.name;
-        }
+        setUserInfo(getResponse.data);
+        localStorage.setItem('userInfo', JSON.stringify({ name: getResponse.data.name, email: getResponse.data.email }));
       } catch (getError) {
         console.error("Error fetching user from backend:", getError.response?.data || getError.message);
-        // Continue with the fallback user info
+        setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
       }
 
-      // Always store user info in localStorage
-      setUserInfo(userInfo);
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      await fetchTrackedObjects(user.email);
       localStorage.setItem('userEmail', user.email);
 
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
