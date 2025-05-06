@@ -78,6 +78,79 @@ const YourPage = () => {
     }
   }, []);
 
+  // Add polling mechanism for wishlist sync
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      if (!userInfo?.email) return;
+      
+      try {
+        const response = await axios.post(`${API_BASE_URL}/get_tracked_objects`, { 
+          email: userInfo.email 
+        });
+        
+        if (response.data?.user_budgets?.[0]) {
+          const trackedObjects = response.data.user_budgets[0];
+          const wishlistItems = trackedObjects.u_id.map((id, index) => ({
+            id,
+            name: trackedObjects.product_name?.[index] || 'Unknown Product',
+            image: trackedObjects.image_url?.[index] || '',
+            price: trackedObjects.product_price?.[index] || 0,
+            platform: trackedObjects.platform?.[index] || 'Unknown',
+            preferredAmount: trackedObjects.preferred_amount?.[index] || null,
+            dateAdded: trackedObjects.date_added?.[index] || Date.now(),
+            link: trackedObjects.link?.[index] || '',
+            originalPrice: trackedObjects.original_price?.[index] || 0,
+            rating: trackedObjects.ratings?.[index] || 0,
+            ratingCount: trackedObjects.number_of_ratings?.[index] || 0,
+            discountRate: trackedObjects.discount_rate?.[index] || "0%"
+          }));
+
+          // Fetch additional product details for each item
+          const productsResponse = await axios.get(`${API_BASE_URL}/products_complete`);
+          if (productsResponse.data?.data) {
+            const productsMap = new Map(productsResponse.data.data.map(p => [p.u_id, p]));
+            
+            // Update wishlist items with complete product data
+            const updatedWishlistItems = wishlistItems.map(item => {
+              const completeProduct = productsMap.get(item.id);
+              if (completeProduct) {
+                return {
+                  ...item,
+                  name: completeProduct.product_name || item.name,
+                  image: completeProduct.image_url || item.image,
+                  price: completeProduct.price || item.price,
+                  platform: completeProduct.platform || item.platform,
+                  link: completeProduct.link || item.link,
+                  originalPrice: completeProduct.original_price || item.originalPrice,
+                  rating: completeProduct.ratings || item.rating,
+                  ratingCount: completeProduct.number_of_ratings || item.ratingCount,
+                  discountRate: completeProduct.discount_rate || item.discountRate
+                };
+              }
+              return item;
+            });
+            
+            setWishlist(updatedWishlistItems);
+            localStorage.setItem('wishlist', JSON.stringify(updatedWishlistItems));
+          } else {
+            setWishlist(wishlistItems);
+            localStorage.setItem('wishlist', JSON.stringify(wishlistItems));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching wishlist:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchWishlist();
+
+    // Set up polling every 5 seconds
+    const pollInterval = setInterval(fetchWishlist, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [userInfo?.email]);
+
   // Fetch recommended products with fallback
   const fetchRecommendedProducts = async () => {
     try {
@@ -179,25 +252,59 @@ const YourPage = () => {
     setSelectedProduct(null);
   };
 
-  const handleRemoveFromWishlist = (product) => {
-    setWishlist(prev => prev.filter(p => p.id !== product.id));
+  // Update handleRemoveFromWishlist to sync with backend
+  const handleRemoveFromWishlist = async (product) => {
+    try {
+      await axios.post(`${API_BASE_URL}/remove_from_list`, {
+        email: userInfo.email,
+        u_id: product.id
+      });
+      
+      setWishlist(prev => prev.filter(p => p.id !== product.id));
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+    }
   };
 
-  const handlePreferredAmountChange = (productId, value) => {
-    setWishlist(prev =>
-      prev.map(item =>
-        item.id === productId
-          ? { ...item, preferredAmount: value ? parseFloat(value) : null }
-          : item
-      )
-    );
+  // Update handlePreferredAmountChange to sync with backend
+  const handlePreferredAmountChange = async (productId, value) => {
+    try {
+      const amount = value ? parseFloat(value) : null;
+      
+      await axios.post(`${API_BASE_URL}/add_to_list`, {
+        email: userInfo.email,
+        u_id: productId,
+        price: amount
+      });
+      
+      setWishlist(prev =>
+        prev.map(item =>
+          item.id === productId
+            ? { ...item, preferredAmount: amount }
+            : item
+        )
+      );
+    } catch (error) {
+      console.error('Error updating preferred amount:', error);
+    }
   };
 
-  const handleAddToWishlist = (product) => {
-    setWishlist(prev => {
-      if (prev.some(item => item.id === product.id)) return prev;
-      return [...prev, { ...product, dateAdded: Date.now() }];
-    });
+  // Update handleAddToWishlist to sync with backend
+  const handleAddToWishlist = async (product) => {
+    try {
+      await axios.post(`${API_BASE_URL}/add_to_list`, {
+        email: userInfo.email,
+        u_id: product.id,
+        price: product.preferredAmount || product.price
+      });
+      
+      setWishlist(prev => {
+        if (prev.some(item => item.id === product.id)) return prev;
+        return [...prev, { ...product, dateAdded: Date.now() }];
+      });
+    } catch (error) {
+      console.error('Error adding to wishlist:', error);
+    }
   };
 
   const handleProfileEditToggle = () => {

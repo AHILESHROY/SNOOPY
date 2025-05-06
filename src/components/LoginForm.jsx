@@ -75,10 +75,22 @@ const SnoopyAuth = () => {
       const user = result.user;
       console.log("Google Sign-In successful:", user);
 
+      // Create user info object with Google display name
+      const userInfo = {
+        name: user.displayName || "Google User",
+        email: user.email,
+        firebase_uid: user.uid
+      };
+
+      // Store user info in localStorage immediately
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      localStorage.setItem('userEmail', user.email);
+      setUserInfo(userInfo);
+
       const payload = {
         firebase_uid: user.uid,
         email: user.email,
-        name: user.displayName || formData.name || "Google User",
+        name: user.displayName || "Google User",
       };
       console.log("Sending POST /users payload:", payload);
 
@@ -87,22 +99,10 @@ const SnoopyAuth = () => {
         console.log("POST /users response:", postResponse.data);
       } catch (postError) {
         console.error("Error posting user to backend:", postError.response?.data || postError.message);
-        setError("Failed to save user info to backend: " + (postError.response?.data?.detail || postError.message));
-      }
-
-      try {
-        const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
-        console.log("GET /users response:", getResponse.data);
-        setUserInfo(getResponse.data);
-        localStorage.setItem('userInfo', JSON.stringify({ name: getResponse.data.name, email: getResponse.data.email }));
-      } catch (getError) {
-        console.error("Error fetching user from backend:", getError.response?.data || getError.message);
-        setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
+        // Don't set error, just log it since we already have the user info in localStorage
       }
 
       await fetchTrackedObjects(user.email);
-      localStorage.setItem('userEmail', user.email);
-
       setSuccess("Signed in with Google successfully!");
       setTimeout(() => navigate("/home"), 1000);
     } catch (err) {
