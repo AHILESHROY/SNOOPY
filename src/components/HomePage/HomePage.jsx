@@ -140,6 +140,103 @@ const HomePage = () => {
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      if (!userEmail) return;
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/get_tracked_objects`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ email: userEmail })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data?.user_budgets?.[0]) {
+          const trackedObjects = data.user_budgets[0];
+          const wishlistItems = trackedObjects.u_id.map((id, index) => ({
+            id,
+            name: trackedObjects.product_name?.[index] || 'Unknown Product',
+            image: trackedObjects.image_url?.[index] || '',
+            price: trackedObjects.product_price?.[index] || 0,
+            platform: trackedObjects.platform?.[index] || 'Unknown',
+            preferredAmount: trackedObjects.preferred_amount?.[index] || null,
+            dateAdded: trackedObjects.date_added?.[index] || Date.now(),
+            link: trackedObjects.link?.[index] || '',
+            originalPrice: trackedObjects.original_price?.[index] || 0,
+            rating: trackedObjects.ratings?.[index] || 0,
+            ratingCount: trackedObjects.number_of_ratings?.[index] || 0,
+            discountRate: trackedObjects.discount_rate?.[index] || "0%"
+          }));
+
+          // Fetch additional product details for each item
+          const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+
+          if (productsResponse.ok) {
+            const productsData = await productsResponse.json();
+            if (productsData?.data) {
+              const productsMap = new Map(productsData.data.map(p => [p.u_id, p]));
+              
+              // Update wishlist items with complete product data
+              const updatedWishlistItems = wishlistItems.map(item => {
+                const completeProduct = productsMap.get(item.id);
+                if (completeProduct) {
+                  return {
+                    ...item,
+                    name: completeProduct.product_name || item.name,
+                    image: completeProduct.image_url || item.image,
+                    price: completeProduct.price || item.price,
+                    platform: completeProduct.platform || item.platform,
+                    link: completeProduct.link || item.link,
+                    originalPrice: completeProduct.original_price || item.originalPrice,
+                    rating: completeProduct.ratings || item.rating,
+                    ratingCount: completeProduct.number_of_ratings || item.ratingCount,
+                    discountRate: completeProduct.discount_rate || item.discountRate
+                  };
+                }
+                return item;
+              });
+              
+              setWishlist(updatedWishlistItems);
+              localStorage.setItem('wishlist', JSON.stringify(updatedWishlistItems));
+            } else {
+              setWishlist(wishlistItems);
+              localStorage.setItem('wishlist', JSON.stringify(wishlistItems));
+            }
+          } else {
+            setWishlist(wishlistItems);
+            localStorage.setItem('wishlist', JSON.stringify(wishlistItems));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching wishlist:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchWishlist();
+
+    // Set up polling every 5 seconds
+    const pollInterval = setInterval(fetchWishlist, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [userEmail]);
+
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };
@@ -168,20 +265,61 @@ const HomePage = () => {
     }
   };
 
-  const handleWishlistToggle = (product) => {
+  const handleWishlistToggle = async (product) => {
     const isInWishlist = wishlist.some(p => p.id === product.id);
     if (isInWishlist) {
-      setWishlist(prev => prev.filter(p => p.id !== product.id));
+      try {
+        const response = await fetch(`${API_BASE_URL}/remove_from_list`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            u_id: product.id
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        setWishlist(prev => prev.filter(p => p.id !== product.id));
+      } catch (error) {
+        console.error('Error removing from wishlist:', error);
+      }
     } else {
       setSelectedProductForAmount(product);
       setShowPreferredAmountPopup(true);
     }
   };
 
-  const handlePreferredAmountConfirm = (amount) => {
+  const handlePreferredAmountConfirm = async (amount) => {
     if (selectedProductForAmount) {
-      const productWithAmount = { ...selectedProductForAmount, preferredAmount: amount };
-      setWishlist(prev => [...prev, productWithAmount]);
+      try {
+        const response = await fetch(`${API_BASE_URL}/add_to_list`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            u_id: selectedProductForAmount.id,
+            price: amount
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const productWithAmount = { ...selectedProductForAmount, preferredAmount: amount };
+        setWishlist(prev => [...prev, productWithAmount]);
+      } catch (error) {
+        console.error('Error adding to wishlist:', error);
+      }
     }
   };
 
