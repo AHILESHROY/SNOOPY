@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import "./ProductCard.css"; // Ensure your styles are properly included
-import { FaEye, FaBalanceScale } from 'react-icons/fa';
+import { FaEye, FaShoppingCart, FaBalanceScale } from 'react-icons/fa';
 
 const renderStars = (rating) => {
   const stars = [];
@@ -68,7 +68,8 @@ const ProductCard = ({ product, onViewClick, onWishlistToggle, isInWishlist, isF
         className="product-badge"
         title={`View on ${product.platform}`}
       >
-        {product.platform}
+        <FaShoppingCart size={16} color="#000" />
+        <span className="platform-name">{product.platform}</span>
       </a>
       <img 
         src={product.image} 

@@ -8,6 +8,7 @@ import WishlistPopup from "../WishlistPopup/WishlistPopup";
 import PreferredAmountPopup from "../PreferredAmountPopup/PreferredAmountPopup";
 import PropTypes from "prop-types";
 import { FaBalanceScale } from 'react-icons/fa';
+import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const API_BASE_URL = 'http://13.203.223.3:8000';
 
@@ -58,17 +59,14 @@ const HomePage = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        console.log('Fetching products...');
 
         const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Access-Control-Allow-Origin': '*'
-          },
-          mode: 'cors'
+            'X-Requested-With': 'XMLHttpRequest'
+          }
         });
 
         if (!productsResponse.ok) {
@@ -76,22 +74,17 @@ const HomePage = () => {
         }
 
         const productsData = await productsResponse.json();
-        console.log('Products data received:', productsData);
 
         if (!productsData.data || !Array.isArray(productsData.data)) {
-          console.error('Invalid products data format:', productsData);
           throw new Error('Invalid data format received from server');
         }
 
-        console.log('Fetching prices...');
         const pricesResponse = await fetch(`${API_BASE_URL}/prices`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          },
-          mode: 'cors'
+            'Content-Type': 'application/json'
+          }
         });
 
         if (!pricesResponse.ok) {
@@ -99,7 +92,6 @@ const HomePage = () => {
         }
 
         const pricesData = await pricesResponse.json();
-        console.log('Prices data received:', pricesData);
         const priceHistoryMap = new Map();
 
         if (pricesData.data && Array.isArray(pricesData.data)) {
@@ -114,7 +106,6 @@ const HomePage = () => {
           });
         }
 
-        console.log('Transforming products...');
         const transformedProducts = productsData.data.map(product => ({
           id: product.u_id,
           name: product.product_name,
@@ -129,21 +120,15 @@ const HomePage = () => {
           priceHistory: priceHistoryMap.get(product.u_id) || generatePriceHistory(product)
         }));
 
-        console.log('Transformed products:', transformedProducts);
         setProducts(transformedProducts);
 
         const randomProducts = [...transformedProducts]
           .sort(() => 0.5 - Math.random())
           .slice(0, 20);
-        console.log('Random products selected:', randomProducts);
         setDisplayedProducts(randomProducts);
         setError(null);
       } catch (error) {
         console.error("Error fetching products:", error);
-        console.error("Error details:", {
-          message: error.message,
-          stack: error.stack
-        });
         setError(`Error: ${error.message}. Please check your internet connection and try again.`);
         setProducts([]);
         setDisplayedProducts([]);
@@ -404,11 +389,7 @@ const HomePage = () => {
                           { key: 'price', label: <span>Price</span>, get: p => p.price ? `₹${p.price}` : '—', icon: '💰' },
                           { key: 'originalPrice', label: <span>Original Price</span>, get: p => p.originalPrice ? `₹${p.originalPrice}` : '—', icon: '🏷️' },
                           { key: 'discount', label: <span>Discount</span>, get: p => p.discountRate || '—', icon: '🔖' },
-                          { key: 'brand', label: <span>Brand</span>, get: p => p.brand || '—', icon: '🏢' },
-                          { key: 'specs', label: <span>Specifications</span>, get: p => p.specs || '—', icon: '📋' },
-                          { key: 'availability', label: <span>Availability</span>, get: p => p.availability || '—', icon: '🚚' },
                           { key: 'rating', label: <span>Rating</span>, get: p => p.rating ? `${p.rating} (${p.ratingCount} reviews)` : '—', icon: '⭐' },
-                          { key: 'offers', label: <span>Offers</span>, get: p => p.offers || '—', icon: '🎁' },
                         ].map(attr => {
                           const values = compareProducts.map(p => attr.get(p));
                           const isDiff = values.length === 2 && values[0] !== values[1];
@@ -421,6 +402,96 @@ const HomePage = () => {
                             </tr>
                           );
                         })}
+                        {/* Graph Section */}
+                        <tr>
+                          <td colSpan={compareProducts.length + 1} style={{ padding: '0' }}>
+                            <div style={{ 
+                              height: '300px', 
+                              overflowY: 'auto', 
+                              scrollbarWidth: 'none',
+                              msOverflowStyle: 'none',
+                              '&::-webkit-scrollbar': { display: 'none' }
+                            }}>
+                              <div style={{ 
+                                height: '300px', 
+                                padding: '20px',
+                                background: '#f9f9f9',
+                                borderRadius: '12px',
+                                boxSizing: 'border-box'
+                              }}>
+                                {compareProducts.length === 2 && (
+                                  <div style={{ 
+                                    height: '100%', 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    gap: '20px',
+                                    background: '#f9f9f9',
+                                    borderRadius: '12px',
+                                    padding: '16px 12px 8px 12px'
+                                  }}>
+                                    <h3 style={{ 
+                                      margin: '0 0 10px 0',
+                                      fontSize: '18px',
+                                      color: '#222',
+                                      fontWeight: '600',
+                                      textAlign: 'center'
+                                    }}>Price History Comparison</h3>
+                                    <div style={{ flex: 1 }}>
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart
+                                          margin={{ top: 10, right: 20, left: 20, bottom: 20 }}
+                                        >
+                                          <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
+                                          <XAxis 
+                                            dataKey="date" 
+                                            tick={{ fontSize: 12 }}
+                                            interval="preserveStartEnd"
+                                            stroke="#666"
+                                          />
+                                          <YAxis 
+                                            tick={{ fontSize: 12 }}
+                                            domain={[
+                                              (dataMin) => Math.floor(dataMin * 0.9),
+                                              (dataMax) => Math.ceil(dataMax * 1.1)
+                                            ]}
+                                            stroke="#666"
+                                          />
+                                          <Tooltip 
+                                            formatter={(value) => `₹${value}`}
+                                            labelFormatter={(label) => `Date: ${label}`}
+                                            contentStyle={{
+                                              background: '#fff',
+                                              border: '1px solid #eee',
+                                              borderRadius: '8px',
+                                              boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                            }}
+                                          />
+                                          <Legend 
+                                            wrapperStyle={{
+                                              paddingTop: '10px'
+                                            }}
+                                          />
+                                          {compareProducts.map((product, index) => (
+                                            <Line
+                                              key={product.id}
+                                              data={product.priceHistory}
+                                              dataKey="price"
+                                              name={`${product.name} (${product.platform})`}
+                                              stroke={index === 0 ? '#27ae60' : '#e74c3c'}
+                                              strokeWidth={2}
+                                              dot={{ r: 3, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
+                                              activeDot={{ r: 5, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
+                                            />
+                                          ))}
+                                        </LineChart>
+                                      </ResponsiveContainer>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
