@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './YourPage.css';
 import Navbar from '../Navbar/Navbar';
 import ProductCard from '../ProductCard/ProductCard';
@@ -16,6 +17,7 @@ const getGreeting = () => {
 
 const YourPage = () => {
   const API_BASE_URL = 'http://13.203.223.3:8000';
+  const navigate = useNavigate();
   const [wishlist, setWishlist] = useState(() => {
     try {
       const saved = localStorage.getItem('wishlist');
@@ -213,8 +215,37 @@ const YourPage = () => {
     setSelectedProduct(null);
   };
 
-  const handleRemoveFromWishlist = (product) => {
-    setWishlist(prev => prev.filter(p => p.id !== product.id));
+  const handleRemoveFromWishlist = async (product) => {
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) {
+        console.error('User email not found');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/remove_from_list`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          u_id: product.id
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.detail || 'Failed to remove item');
+      }
+
+      // Only remove from local state if API call is successful
+      setWishlist(prev => prev.filter(p => p.id !== product.id));
+    } catch (error) {
+      console.error('Failed to remove item:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
   const handleAddToWishlist = (product) => {
@@ -543,7 +574,7 @@ const YourPage = () => {
             <div className="wishlist-empty-innovative">
               <img src="/empty_wishlist_illustration.svg" alt="Empty Wishlist" className="wishlist-empty-illustration" />
               <div className="wishlist-empty-message">Your wishlist is empty. Add some products from the homepage!</div>
-              <button className="wishlist-empty-cta" onClick={() => window.location.href = '/'}>Browse Products</button>
+              <button className="wishlist-empty-cta" onClick={() => navigate('/home')}>Browse Products</button>
             </div>
           ) : (
             <div className="wishlist-carousel-innovative" ref={wishlistRef}>

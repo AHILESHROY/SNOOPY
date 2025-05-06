@@ -7,8 +7,9 @@ import ProductDetails from "../ProductDetails/ProductDetails";
 import WishlistPopup from "../WishlistPopup/WishlistPopup";
 import PreferredAmountPopup from "../PreferredAmountPopup/PreferredAmountPopup";
 import PropTypes from "prop-types";
-import { FaBalanceScale } from 'react-icons/fa';
+import { FaBalanceScale, FaHeart, FaPlus } from 'react-icons/fa';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import AddProductPopup from '../AddProductPopup/AddProductPopup';
 
 const API_BASE_URL = 'http://13.203.223.3:8000';
 
@@ -50,6 +51,7 @@ const HomePage = () => {
   const [compareMode, setCompareMode] = useState(false);
   const [compareProducts, setCompareProducts] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [showAddProductPopup, setShowAddProductPopup] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('wishlist', JSON.stringify(wishlist));
@@ -213,7 +215,11 @@ const HomePage = () => {
     });
   };
 
-  const closeCompareModal = () => setShowCompareModal(false);
+  const closeCompareModal = () => {
+    setShowCompareModal(false);
+    setCompareProducts([]);
+    setCompareMode(false);
+  };
 
   const filteredProducts = searchQuery
     ? products.filter((product) =>
@@ -239,26 +245,31 @@ const HomePage = () => {
           />
         </form>
 
-        <div
-          className="wishlist-icon"
-          onClick={() => setShowWishlistPopup(true)}
-          title="View Wishlist"
-        >
-          {wishlist.length > 0 ? "❤️" : "🤍"}
-          {wishlist.length > 0 && (
-            <span className="wishlist-count">{wishlist.length}</span>
-          )}
-        </div>
-
-        <div
-          className={`compare-icon ${compareMode ? 'active' : ''}`}
-          onClick={() => {
-            setCompareMode(prev => !prev);
-            setCompareProducts([]);
-          }}
-          title={compareMode ? "Exit Compare Mode" : "Enter Compare Mode"}
-        >
-          <FaBalanceScale />
+        <div className="header-controls">
+          <button 
+            className="header-button add-product-button"
+            onClick={() => setShowAddProductPopup(true)}
+            title="Add Product"
+          >
+            <FaPlus />
+          </button>
+          <button 
+            className="header-button wishlist-button"
+            onClick={() => setShowWishlistPopup(true)}
+            title="Wishlist"
+          >
+            <FaHeart />
+          </button>
+          <button
+            className={`header-button compare-button ${compareMode ? 'active' : ''}`}
+            onClick={() => {
+              setCompareMode(prev => !prev);
+              setCompareProducts([]);
+            }}
+            title={compareMode ? "Exit Compare Mode" : "Enter Compare Mode"}
+          >
+            <FaBalanceScale />
+          </button>
         </div>
       </div>
 
@@ -318,7 +329,7 @@ const HomePage = () => {
 
             {showCompareModal && (
               <div className="compare-modal-overlay" style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={closeCompareModal}>
-                <div className="compare-modal-advanced" style={{background:'#fff', borderRadius:20, padding:'40px 32px 32px 32px', minWidth:400, maxWidth:1200, boxShadow:'0 8px 32px rgba(0,0,0,0.18)', position:'relative', width:'96vw', overflowX:'auto'}} onClick={e => e.stopPropagation()}>
+                <div className="compare-modal-advanced" style={{background:'#fff', borderRadius:20, padding:'40px 32px 32px 32px', minWidth:400, maxWidth:1200, boxShadow:'0 8px 32px rgba(0,0,0,0.18)', position:'relative', width:'96vw', maxHeight:'90vh'}} onClick={e => e.stopPropagation()}>
                   <button onClick={closeCompareModal} style={{position:'absolute', top:22, right:22, background:'#ffd54f', border:'none', borderRadius:'50%', width:40, height:40, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, cursor:'pointer', boxShadow:'0 2px 8px #ffd54f55'}} title="Close">
                     ×
                   </button>
@@ -326,7 +337,7 @@ const HomePage = () => {
                   <div style={{
                     overflowX: 'auto',
                     overflowY: 'auto',
-                    maxHeight: '70vh',
+                    maxHeight: 'calc(90vh - 120px)',
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
                   }}
@@ -391,91 +402,78 @@ const HomePage = () => {
                         <tr>
                           <td colSpan={compareProducts.length + 1} style={{ padding: '0' }}>
                             <div style={{ 
-                              height: '300px', 
-                              overflowY: 'auto', 
-                              scrollbarWidth: 'none',
-                              msOverflowStyle: 'none',
-                              '&::-webkit-scrollbar': { display: 'none' }
+                              height: '400px', 
+                              padding: '20px',
+                              background: '#f9f9f9',
+                              borderRadius: '12px',
+                              boxSizing: 'border-box'
                             }}>
-                              <div style={{ 
-                                height: '300px', 
-                                padding: '20px',
-                                background: '#f9f9f9',
-                                borderRadius: '12px',
-                                boxSizing: 'border-box'
-                              }}>
-                                <h3 style={{
-                                  margin: '0 0 16px 0',
-                                  fontSize: '18px',
-                                  color: '#222',
-                                  fontWeight: '600',
-                                  textAlign: 'center'
-                                }}>Price History Comparison</h3>
-                                <div style={{ flex: 1 }}>
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart
-                                      margin={{ top: 10, right: 20, left: 20, bottom: 20 }}
-                                    >
-                                      <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
-                                      <XAxis 
-                                        dataKey="date" 
-                                        tick={{ fontSize: 12 }}
-                                        interval="preserveStartEnd"
-                                        stroke="#666"
-                                        tickFormatter={(value) => {
-                                          const date = new Date(value);
-                                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                                        }}
+                              <h3 style={{
+                                margin: '0 0 16px 0',
+                                fontSize: '18px',
+                                color: '#222',
+                                fontWeight: '600',
+                                textAlign: 'center'
+                              }}>Price History Comparison</h3>
+                              <div style={{ height: '320px' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart
+                                    data={compareProducts[0]?.priceHistory || []}
+                                    margin={{ top: 10, right: 30, left: 30, bottom: 30 }}
+                                  >
+                                    <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
+                                    <XAxis 
+                                      dataKey="date" 
+                                      tick={{ fontSize: 12 }}
+                                      interval="preserveStartEnd"
+                                      stroke="#666"
+                                      tickFormatter={(value) => {
+                                        const date = new Date(value);
+                                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                      }}
+                                    />
+                                    <YAxis 
+                                      tick={{ fontSize: 12 }}
+                                      domain={[
+                                        (dataMin) => Math.floor(dataMin * 0.9),
+                                        (dataMax) => Math.ceil(dataMax * 1.1)
+                                      ]}
+                                      stroke="#666"
+                                      tickFormatter={(value) => `₹${value}`}
+                                      width={80}
+                                    />
+                                    <Tooltip 
+                                      formatter={(value) => [`₹${value}`, 'Price']}
+                                      labelFormatter={(label) => `Date: ${label}`}
+                                      contentStyle={{
+                                        background: '#fff',
+                                        border: '1px solid #eee',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                        padding: '8px 12px'
+                                      }}
+                                    />
+                                    <Legend 
+                                      wrapperStyle={{
+                                        paddingTop: '10px',
+                                        fontSize: '12px'
+                                      }}
+                                    />
+                                    {compareProducts.map((product, index) => (
+                                      <Line
+                                        key={product.id}
+                                        data={product.priceHistory}
+                                        dataKey="price"
+                                        name={`${product.name} (${product.platform})`}
+                                        stroke={index === 0 ? '#27ae60' : '#e74c3c'}
+                                        strokeWidth={2}
+                                        dot={{ r: 3, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
+                                        activeDot={{ r: 5, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
+                                        animationDuration={300}
                                       />
-                                      <YAxis 
-                                        tick={{ fontSize: 12 }}
-                                        domain={[
-                                          (dataMin) => Math.floor(dataMin * 0.9),
-                                          (dataMax) => Math.ceil(dataMax * 1.1)
-                                        ]}
-                                        stroke="#666"
-                                        tickFormatter={(value) => `₹${value}`}
-                                      />
-                                      <Tooltip 
-                                        formatter={(value) => [`₹${value}`, 'Price']}
-                                        labelFormatter={(label) => {
-                                          const date = new Date(label);
-                                          return date.toLocaleDateString('en-US', { 
-                                            month: 'short', 
-                                            day: 'numeric',
-                                            year: 'numeric'
-                                          });
-                                        }}
-                                        contentStyle={{
-                                          background: '#fff',
-                                          border: '1px solid #eee',
-                                          borderRadius: '8px',
-                                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                          padding: '8px 12px'
-                                        }}
-                                      />
-                                      <Legend 
-                                        wrapperStyle={{
-                                          paddingTop: '10px',
-                                          fontSize: '12px'
-                                        }}
-                                      />
-                                      {compareProducts.map((product, index) => (
-                                        <Line
-                                          key={product.id}
-                                          data={product.priceHistory}
-                                          dataKey="price"
-                                          name={`${product.name} (${product.platform})`}
-                                          stroke={index === 0 ? '#27ae60' : '#e74c3c'}
-                                          strokeWidth={2}
-                                          dot={{ r: 3, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
-                                          activeDot={{ r: 5, fill: index === 0 ? '#27ae60' : '#e74c3c' }}
-                                          animationDuration={300}
-                                        />
-                                      ))}
-                                    </LineChart>
-                                  </ResponsiveContainer>
-                                </div>
+                                    ))}
+                                  </LineChart>
+                                </ResponsiveContainer>
                               </div>
                             </div>
                           </td>
@@ -517,6 +515,10 @@ const HomePage = () => {
           onConfirm={handlePreferredAmountConfirm}
           userEmail={userEmail}
         />
+      )}
+
+      {showAddProductPopup && (
+        <AddProductPopup onClose={() => setShowAddProductPopup(false)} />
       )}
     </div>
   );

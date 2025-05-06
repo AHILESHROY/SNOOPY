@@ -160,7 +160,13 @@ const ProductDetails = ({ product, onClose }) => {
                       <h3>Price History</h3>
                       <ResponsiveContainer width="100%" height={200}>
                         <LineChart data={product.priceHistory} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                          <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
+                          <CartesianGrid 
+                            stroke="#e0e0e0" 
+                            strokeDasharray="3 3" 
+                            vertical={true}
+                            horizontal={true}
+                            strokeOpacity={0.5}
+                          />
                           <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                           <YAxis tick={{ fontSize: 12 }} />
                           <Tooltip />

@@ -182,7 +182,7 @@ const TeamSection = () => {
       description: "Experienced back-end developer with strong skills in database management and API development. Ensures robust and scalable server-side solutions."
     },
     { 
-      name: "Akhil Ramalingam", 
+      name: "Sivakuhan A", 
       role: "Front End Developer", 
       image: Akhil,
       description: "Creative front-end developer focused on user experience and performance optimization. Brings innovative solutions to complex UI challenges."
@@ -195,9 +195,9 @@ const TeamSection = () => {
     },
     { 
       name: "Gowtham V", 
-      role: "Testing Manager", 
+      role: "Extension Developer", 
       image: Gowtham,
-      description: "Detail-oriented testing manager ensuring quality and reliability. Implements comprehensive testing strategies and maintains high standards."
+      description: "A passionate extension developer with expertise in React and modern web technologies. Specializes in creating responsive and interactive user interfaces."
     }
   ];
 

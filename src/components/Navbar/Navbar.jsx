@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { auth } from "../firebase";
+import { signOut } from "firebase/auth";
 import "./Navbar.css";
 
 const Navbar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -12,6 +15,20 @@ const Navbar = () => {
 
   const isActive = (path) => {
     return location.pathname === path ? 'active' : '';
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Clear all local storage items
+      localStorage.removeItem('userInfo');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('wishlist');
+      // Navigate to login page
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   return (
@@ -36,7 +53,7 @@ const Navbar = () => {
             <Link to="/aboutus" className={isActive('/aboutus')}>About Us</Link>
           </li>
           <li className="hideOnMobile">
-            <Link to="/" className={isActive('/')}>Logout</Link>
+            <Link to="/" onClick={handleLogout} className={isActive('/')}>Logout</Link>
           </li>
           {/* Mobile menu button */}
           <li>
@@ -63,7 +80,7 @@ const Navbar = () => {
             <Link to="/aboutus" onClick={toggleSidebar} className={isActive('/aboutus')}>About Us</Link>
           </li>
           <li>
-            <Link to="/" onClick={toggleSidebar} className={isActive('/')}>Logout</Link>
+            <Link to="/" onClick={(e) => { e.preventDefault(); handleLogout(); toggleSidebar(); }} className={isActive('/')}>Logout</Link>
           </li>
         </ul>
       </div>
