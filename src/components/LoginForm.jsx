@@ -16,7 +16,6 @@ const SnoopyAuth = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
-  const [trackedObjects, setTrackedObjects] = useState(null);
   const navigate = useNavigate();
   const API_BASE_URL = 'http://13.203.223.3:8000';
 
@@ -55,17 +54,6 @@ const SnoopyAuth = () => {
     setError("");
   };
 
-  const fetchTrackedObjects = async (email) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/get_tracked_objects`, { email });
-      console.log("GET /get_tracked_objects response:", response.data);
-      setTrackedObjects(response.data.user_budgets[0]);
-    } catch (err) {
-      console.error("Error fetching tracked objects:", err.response?.data || err.message);
-      setError("Failed to fetch tracked objects: " + (err.response?.data?.detail || err.message));
-    }
-  };
-
   const handleGoogleSignIn = async () => {
     try {
       setError("");
@@ -100,7 +88,6 @@ const SnoopyAuth = () => {
         setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
       }
 
-      await fetchTrackedObjects(user.email);
       localStorage.setItem('userEmail', user.email);
 
       setSuccess("Signed in with Google successfully!");
@@ -438,31 +425,11 @@ const SnoopyAuth = () => {
         </div>
       </div>
 
-      {(userInfo || trackedObjects) && (
+      {userInfo && (
         <div className="user-info">
-          {userInfo && (
-            <>
-              <h3>User Information:</h3>
-              <p>Name: {userInfo.name}</p>
-              <p>Email: {userInfo.email}</p>
-            </>
-          )}
-          {trackedObjects && (
-            <>
-              <h3>Tracked Objects (Wishlist):</h3>
-              {trackedObjects.u_id.length > 0 ? (
-                <ul>
-                  {trackedObjects.u_id.map((itemId, index) => (
-                    <li key={itemId}>
-                      Product ID: {itemId}, Price: ${trackedObjects.product_price[index]}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No tracked objects found.</p>
-              )}
-            </>
-          )}
+          <h3>User Information:</h3>
+          <p>Name: {userInfo.name}</p>
+          <p>Email: {userInfo.email}</p>
         </div>
       )}
 

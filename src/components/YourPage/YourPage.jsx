@@ -480,18 +480,18 @@ const YourPage = () => {
   };
 
   return (
-    <div className="yourpage-container">
+    <div className="yp-yourpage-container">
       <Navbar />
-      <div className="yourpage-content">
-        <div className="profile-container">
-          <h2 className="profile-title">
+      <div className="yp-yourpage-content">
+        <div className="yp-profile-container">
+          <h2 className="yp-profile-title">
             {userInfo ? `${getGreeting()}, ${userInfo.name}!` : 'Welcome!'}
           </h2>
-          {userInfo ? (
-            <div className="profile-details">
+          {userInfo && (
+            <div className="yp-profile-details">
               {isEditingProfile ? (
-                <form onSubmit={handleProfileSubmit} className="profile-form">
-                  <div className="form-group">
+                <form onSubmit={handleProfileSubmit} className="yp-profile-form">
+                  <div className="yp-form-group">
                     <label>Name:</label>
                     <input
                       type="text"
@@ -501,7 +501,7 @@ const YourPage = () => {
                       required
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="yp-form-group">
                     <label>Email:</label>
                     <input
                       type="email"
@@ -511,47 +511,45 @@ const YourPage = () => {
                       required
                     />
                   </div>
-                  <div className="form-actions">
-                    <button type="submit" className="save-button">Save</button>
-                    <button type="button" className="cancel-button" onClick={handleProfileEditToggle}>
+                  <div className="yp-form-actions">
+                    <button type="submit" className="yp-save-button">Save</button>
+                    <button type="button" className="yp-cancel-button" onClick={handleProfileEditToggle}>
                       Cancel
                     </button>
                   </div>
-                  {profileError && <p className="profile-error">{profileError}</p>}
-                  {profileSuccess && <p className="profile-success">{profileSuccess}</p>}
+                  {profileError && <p className="yp-profile-error">{profileError}</p>}
+                  {profileSuccess && <p className="yp-profile-success">{profileSuccess}</p>}
                 </form>
               ) : (
-                <div className="profile-view">
+                <div className="yp-profile-view">
                   <p><strong>Name:</strong> {userInfo.name}</p>
                   <p><strong>Email:</strong> {userInfo.email}</p>
-                  <button className="edit-button" onClick={handleProfileEditToggle}>
+                  <button className="yp-edit-button" onClick={handleProfileEditToggle}>
                     Edit Profile
                   </button>
                 </div>
               )}
             </div>
-          ) : (
-            <p className="profile-error">Loading profile...</p>
           )}
         </div>
 
-        <div className="wishlist-container">
-          <div className="wishlist-header-innovative">
-            <span className="wishlist-header-icon">❤️</span>
-            <div className="wishlist-header-content">
-              <div className="wishlist-header-title">Your Wishlist</div>
-              <div className="wishlist-header-message">You're one step closer to your dream products!</div>
-              <div className="wishlist-header-stats">
+        <div className="yp-wishlist-container">
+          <div className="yp-wishlist-header-innovative">
+            <span className="yp-wishlist-header-icon">❤️</span>
+            <div className="yp-wishlist-header-content">
+              <div className="yp-wishlist-header-title">Your Wishlist</div>
+              <div className="yp-wishlist-header-message">You're one step closer to your dream products!</div>
+              <div className="yp-wishlist-header-stats">
                 <span>{sortedWishlist.length} item{sortedWishlist.length !== 1 ? 's' : ''}</span>
                 <span>Total: ₹{sortedWishlist.reduce((sum, p) => sum + (p.price || 0), 0)}</span>
               </div>
             </div>
           </div>
-          <div className="wishlist-actions-innovative">
+          <div className="yp-wishlist-actions-innovative">
             <select
               onChange={e => setSortOption(e.target.value)}
               value={sortOption}
-              className="wishlist-sort-pill"
+              className="yp-wishlist-sort-pill"
             >
               <option value="default">Sort: Default</option>
               <option value="price-low-high">Price: Low to High</option>
@@ -562,7 +560,7 @@ const YourPage = () => {
             <select
               onChange={e => setWishlistPlatformFilter(e.target.value)}
               value={wishlistPlatformFilter}
-              className="wishlist-sort-pill"
+              className="yp-wishlist-sort-pill"
             >
               <option value="All">All Platforms</option>
               {[...new Set(wishlist.map(p => p.platform))].map(platform => (
@@ -571,39 +569,41 @@ const YourPage = () => {
             </select>
           </div>
           {sortedWishlist.length === 0 ? (
-            <div className="wishlist-empty-innovative">
-              <img src="/empty_wishlist_illustration.svg" alt="Empty Wishlist" className="wishlist-empty-illustration" />
-              <div className="wishlist-empty-message">Your wishlist is empty. Add some products from the homepage!</div>
-              <button className="wishlist-empty-cta" onClick={() => navigate('/home')}>Browse Products</button>
+            <div className="yp-wishlist-empty-innovative">
+              <img src="/empty_wishlist_illustration.svg" alt="Empty Wishlist" className="yp-wishlist-empty-illustration" />
+              <div className="yp-wishlist-empty-message">Your wishlist is empty. Add some products from the homepage!</div>
+              <button className="yp-wishlist-empty-cta" onClick={() => navigate('/home')}>Browse Products</button>
             </div>
           ) : (
-            <div className="wishlist-carousel-innovative" ref={wishlistRef}>
+            <div className="yp-wishlist-carousel-innovative" ref={wishlistRef}>
               {sortedWishlist
                 .filter(p => wishlistPlatformFilter === 'All' || p.platform === wishlistPlatformFilter)
                 .map(product => (
-                  <div key={product.id} className="wishlist-card-innovative">
-                    <div className="wishlist-card-platform-badge">
+                  <div key={product.id} className="yp-wishlist-card-innovative">
+                    <div className="yp-wishlist-card-platform-badge">
                       <a href={product.link} target="_blank" rel="noopener noreferrer" title={`View on site`} style={{display:'flex',alignItems:'center'}}>
                         <FaShoppingCart style={{ color: '#bfa600', fontSize: 28 }} />
                       </a>
                     </div>
-                    <div className="wishlist-card-remove" onClick={() => handleRemoveFromWishlist(product)} title="Remove">
+                    <div className="yp-wishlist-card-remove" onClick={() => handleRemoveFromWishlist(product)} title="Remove">
                       <i className="fa fa-trash"></i>
                     </div>
-                    <div className="wishlist-card-quickview" onClick={() => handleQuickView(product)} title="Quick View">
+                    <div className="yp-wishlist-card-quickview" onClick={() => handleQuickView(product)} title="Quick View">
                       <i className="fa fa-eye"></i>
                     </div>
-                    <img src={product.image} alt={product.name} className="wishlist-card-image" />
-                    <div className="wishlist-card-info">
-                      <div className="wishlist-card-name">{product.name}</div>
-                      <div className="wishlist-card-price">₹{product.price}</div>
+                    <img src={product.image} alt={product.name} className="yp-wishlist-card-image" />
+                    <div className="yp-wishlist-card-info">
+                      <div className="yp-wishlist-card-name">{product.name}</div>
+                      <div className="yp-wishlist-card-price">₹{product.price}</div>
                       {product.preferredAmount ? (
-                        <div className="wishlist-card-progress">
-                          <div className="wishlist-card-progress-bar" style={{width: `${Math.min(100, Math.round((product.price / product.preferredAmount) * 100))}%`}}></div>
-                          <span className="wishlist-card-progress-label">Goal: ₹{product.preferredAmount}</span>
+                        <div className="yp-wishlist-card-progress">
+                          <div className="yp-wishlist-card-progress-bar" style={{width: `${Math.min(100, Math.round((product.price / product.preferredAmount) * 100))}%`}}></div>
+                          <span className="yp-wishlist-card-progress-label">Goal: ₹{product.preferredAmount}</span>
                         </div>
                       ) : (
-                        <button className="wishlist-card-setgoal" onClick={() => handlePreferredAmountChange(product.id, prompt('Set your preferred amount:'))}>Set Goal</button>
+                        <div className="yp-wishlist-card-goal-text">
+                          GOAL: ₹{product.price}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -612,8 +612,8 @@ const YourPage = () => {
           )}
         </div>
 
-        <div className="recommended-container">
-          <h1 className="recommended-title">Recommended Products</h1>
+        <div className="yp-recommended-container">
+          <h1 className="yp-recommended-title">Recommended Products</h1>
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -717,29 +717,29 @@ const YourPage = () => {
             )}
           </div>
           {loadingRecommended ? (
-            <div className="loading">Loading recommended products...</div>
+            <div className="yp-loading">Loading recommended products...</div>
           ) : recommendedError ? (
-            <div className="error-message">
+            <div className="yp-error-message">
               <p>{recommendedError}</p>
               <button
                 onClick={fetchRecommendedProducts}
-                className="retry-button"
+                className="yp-retry-button"
               >
                 Retry Loading
               </button>
             </div>
           ) : recommendedProducts.length === 0 ? (
-            <p className="empty-wishlist">No recommended products available at the moment.</p>
+            <p className="yp-empty-wishlist">No recommended products available at the moment.</p>
           ) : (
-            <div className="slider-container">
+            <div className="yp-slider-container">
               <button
-                className="slider-arrow left-arrow"
+                className="yp-slider-arrow yp-left-arrow"
                 onClick={() => scrollRecommended('left')}
                 disabled={loadingMoreRec}
               >
                 &larr;
               </button>
-              <div className="recommended-slider" ref={recommendedRef}>
+              <div className="yp-recommended-slider" ref={recommendedRef}>
                 {(() => {
                   let filtered = selectedPlatform === 'All' ? recommendedProducts : recommendedProducts.filter(p => p.platform === selectedPlatform);
                   // Filter by price range
@@ -768,7 +768,7 @@ const YourPage = () => {
                       break;
                   }
                   return filtered.map((product) => (
-                    <div key={product.id} className="product-card-with-controls">
+                    <div key={product.id} className="yp-product-card-with-controls">
                       <ProductCard
                         product={product}
                         onViewClick={() => setSelectedProduct(product)}
@@ -784,7 +784,7 @@ const YourPage = () => {
                 })()}
               </div>
               <button
-                className="slider-arrow right-arrow"
+                className="yp-slider-arrow yp-right-arrow"
                 onClick={() => {
                   const container = recommendedRef.current;
                   if (container) {

@@ -22,8 +22,8 @@ const Navbar = () => {
       await signOut(auth);
       // Clear all local storage items
       localStorage.removeItem('userInfo');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('wishlist');
+      
+    
       // Navigate to login page
       navigate('/');
     } catch (error) {

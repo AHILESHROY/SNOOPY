@@ -179,10 +179,10 @@ const TeamSection = () => {
       name: "Aadhav Nagarajan", 
       role: "Back End Developer", 
       image: Aadhav,
-      description: "Experienced back-end developer with strong skills in database management and API development. Ensures robust and scalable server-side solutions."
+      description: "Experienced back-end developer with strong skills in database management and API development. Ensures robust and scalable server-side solutions. AWS EXPERT!!!!!!!!!!!!!!"
     },
     { 
-      name: "Sivakuhan A", 
+      name: "Akhil Ramalingam", 
       role: "Front End Developer", 
       image: Akhil,
       description: "Creative front-end developer focused on user experience and performance optimization. Brings innovative solutions to complex UI challenges."
