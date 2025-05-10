@@ -2,9 +2,12 @@ import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import "./ProductDetails.css";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { calculateHolisticDealScore, getDealLabel } from '../../utils/dealCalculator';
 
 const ProductDetails = ({ product, onClose }) => {
   const [showModal, setShowModal] = useState(true);
+  const [dealValue, setDealValue] = useState(0);
+  const [isCalculatingDeal, setIsCalculatingDeal] = useState(true);
 
   useEffect(() => {
     // Prevent background scrolling when modal is open
@@ -19,12 +22,30 @@ const ProductDetails = ({ product, onClose }) => {
     
     window.addEventListener('keydown', handleEscape);
     
+    // Calculate deal score when product changes
+    const calculateDeal = async () => {
+      setIsCalculatingDeal(true);
+      try {
+        const dealData = await calculateHolisticDealScore(product);
+        setDealValue(dealData.score);
+      } catch (error) {
+        console.error('Error calculating deal score:', error);
+        setDealValue(0);
+      } finally {
+        setIsCalculatingDeal(false);
+      }
+    };
+
+    if (product) {
+      calculateDeal();
+    }
+    
     // Cleanup function
     return () => {
       document.body.style.overflow = 'auto';
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [onClose]);
+  }, [product, onClose]);
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -51,15 +72,7 @@ const ProductDetails = ({ product, onClose }) => {
 
   if (!product) return null;
 
-  // Calculate deal value
-  const calculateDealValue = () => {
-    const originalPrice = parseFloat(product.originalPrice);
-    const currentPrice = parseFloat(product.currentPrice);
-    const discount = ((originalPrice - currentPrice) / originalPrice) * 100;
-    return Math.min(Math.round(discount), 100); // Cap at 100%
-  };
-
-  const dealValue = calculateDealValue();
+  const dealLabel = getDealLabel(dealValue);
 
   return (
     <>
@@ -87,105 +100,53 @@ const ProductDetails = ({ product, onClose }) => {
 
                 <div className="product-details-section">
                   <div className="price-section">
-                    <h3>Price Details</h3>
                     <div className="price-container">
-                      {product.originalPrice > 0 && (
-                        <div className="original-price">
-                          Original Price: <span>₹{product.originalPrice.toFixed(2)}</span>
-                        </div>
+                      <div className="current-price">₹{product.price}</div>
+                      {product.originalPrice && (
+                        <div className="original-price">₹{product.originalPrice}</div>
                       )}
-                      <div className="current-price">
-                        Current Price: <span>₹{product.price.toFixed(2)}</span>
-                      </div>
-                      {product.discountRate !== "0%" && (
-                        <div className="discount-badge">
-                          {product.discountRate} OFF
-                        </div>
+                      {product.discountRate && (
+                        <div className="discount-badge">{product.discountRate}</div>
                       )}
                     </div>
                   </div>
 
-                  {/* Deal Meter */}
-                  <div className="deal-meter-row">
-                    <div className="deal-meter-circle">
-                      <svg width="80" height="80">
-                        <circle
-                          className="deal-meter-bg"
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          strokeWidth="6"
-                          fill="none"
-                        />
-                        <circle
-                          className="deal-meter-fg"
-                          cx="40"
-                          cy="40"
-                          r="36"
-                          strokeWidth="6"
-                          fill="none"
-                          strokeDasharray={2 * Math.PI * 36}
-                          strokeDashoffset={2 * Math.PI * 36 * (1 - dealValue / 100)}
-                        />
-                      </svg>
-                      <div className="deal-meter-center">
-                        <div className="deal-meter-percent">{dealValue}%</div>
-                        <div className="deal-meter-label">
-                          {dealValue > 80 ? "Great deal!" : dealValue > 50 ? "Good deal" : "Fair deal"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="deal-meter-info">
+                  <div className="deal-meter">
+                    <div className="deal-meter-header">
                       <div className="deal-meter-title">Deal Meter</div>
-                      <div className="deal-meter-desc">
-                        Based on price history, discount percentage, and market comparison
-                      </div>
+                      {!isCalculatingDeal && (
+                        <div className="deal-meter-value">{dealLabel}</div>
+                      )}
                     </div>
+                    {isCalculatingDeal ? (
+                      <div className="calculating">Calculating deal score...</div>
+                    ) : (
+                      <>
+                        <div className="deal-meter-bar">
+                          <div 
+                            className="deal-meter-progress"
+                            style={{ width: `${dealValue}%` }}
+                          />
+                        </div>
+                        <div className="deal-meter-labels">
+                          <span>Poor</span>
+                          <span>Fair</span>
+                          <span>Good</span>
+                          <span>Great</span>
+                          <span>Excellent</span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="rating-section">
                     <h3>Customer Reviews</h3>
                     <div className="rating-container">
-                      <div className="stars">
-                        {renderStars(product.rating)}
-                      </div>
+                      <div className="stars">{renderStars(product.rating)}</div>
                       <div className="rating-text">
-                        {product.rating} out of 5 ({product.ratingCount} reviews)
+                        {product.ratingCount} reviews
                       </div>
                     </div>
-                  </div>
-
-                  {product.priceHistory && product.priceHistory.length > 1 && (
-                    <div className="price-history-graph">
-                      <h3>Price History</h3>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <LineChart data={product.priceHistory} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                          <CartesianGrid 
-                            stroke="#e0e0e0" 
-                            strokeDasharray="3 3" 
-                            vertical={true}
-                            horizontal={true}
-                            strokeOpacity={0.5}
-                          />
-                          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                          <YAxis tick={{ fontSize: 12 }} />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="price" stroke="#27ae60" strokeWidth={2} dot={{ r: 3 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  <div className="product-description">
-                    <h3>Product Description</h3>
-                    <p>
-                      This {product.name} is available on {product.platform}. 
-                      {product.discountRate !== "0%" ? ` It's currently on sale with a ${product.discountRate} discount.` : ''}
-                      {product.rating > 0 ? ` It has received positive reviews with an average rating of ${product.rating} stars.` : ''}
-                    </p>
-                    <p>
-                      Click the link above to view this product on {product.platform} and make your purchase.
-                    </p>
                   </div>
 
                   <div className="action-buttons">
@@ -197,6 +158,9 @@ const ProductDetails = ({ product, onClose }) => {
                     >
                       Buy Now
                     </a>
+                    <button className="close-button" onClick={handleCloseModal}>
+                      Close
+                    </button>
                   </div>
                 </div>
               </div>
