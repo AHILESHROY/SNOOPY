@@ -16,7 +16,7 @@
 }
 
 .modal-content {
-  background:#f9f9f9;
+  background: #f9f9f9;
   border-radius: 20px;
   width: 80%;
   height: 80%;
@@ -68,11 +68,11 @@
   align-items: center;
   position: sticky;
   top: 0;
-  background:white;
+  background: white;
   padding: 15px 20px;
   z-index: 2;
   border-bottom: 1px solid #eee;
-  width:98%;
+  width: 98%;
   margin: 0;
   box-sizing: border-box;
   border-radius: 20px;
@@ -164,20 +164,69 @@
 .current-price {
   font-size: 32px;
   font-weight: bold;
-  color:black;
+  color: black;
 }
 
 .discount-badge {
-  
-  color:black;
+  color: black;
   padding: 2px 6px;
-  
   font-weight: 700;
-  display:flex;
+  display: flex;
   font-size: 20px;
-  margin-top:2px;
+  margin-top: 2px;
   min-width: 40px;
   text-align: center;
+}
+
+/* Deal Meter */
+.deal-meter {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.deal-meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.deal-meter-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.deal-meter-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #000;
+}
+
+.deal-meter-bar {
+  height: 12px;
+  background: #e9ecef;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+.deal-meter-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.deal-meter-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-top: 5px;
 }
 
 /* Rating Section */
@@ -376,126 +425,6 @@
     transform: translateY(0);
     opacity: 1;
   }
-}
-
-/* Deal Meter */
-.deal-meter {
-  margin: 20px 0;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-}
-
-.deal-meter-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.deal-meter-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.deal-meter-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #000;
-}
-
-.deal-meter-bar {
-  height: 12px;
-  background: #e9ecef;
-  border-radius: 6px;
-  overflow: hidden;
-  margin: 10px 0;
-}
-
-.deal-meter-progress {
-  height: 100%;
-  background: linear-gradient(90deg, #27ae60, #2ecc71);
-  border-radius: 6px;
-  transition: width 0.5s ease;
-}
-
-.deal-meter-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #7f8c8d;
-  margin-top: 5px;
-}
-
-.deal-meter-row {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  margin: 24px 0;
-}
-
-.deal-meter-circle {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.deal-meter-bg {
-  stroke: #e0e0e0;
-}
-
-.deal-meter-fg {
-  stroke: #27ae60;
-  transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.deal-meter-center {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.deal-meter-percent {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #27ae60;
-}
-
-.deal-meter-label {
-  font-size: 0.9rem;
-  color: #27ae60;
-  font-weight: 500;
-}
-
-.deal-meter-info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.deal-meter-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #222;
-}
-
-.deal-meter-desc {
-  font-size: 0.95rem;
-  color: #666;
-  margin-top: 2px;
-}
-
-/* Remove old deal meter styles if present */
-.deal-meter, .deal-meter-header, .deal-meter-value, .deal-meter-bar, .deal-meter-progress, .deal-meter-labels {
-  display: none !important;
 }
 
 .price-history-graph {

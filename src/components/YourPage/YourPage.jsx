@@ -504,6 +504,28 @@ const YourPage = () => {
     }
   };
 
+  // Function to calculate deal scores for comparison
+  const calculateDealScores = async (products) => {
+    const scores = {};
+    for (const product of products) {
+      try {
+        const dealData = await calculateHolisticDealScore(product);
+        scores[product.id] = dealData;
+      } catch (error) {
+        console.error(`Error calculating deal score for product ${product.id}:`, error);
+        scores[product.id] = { score: 0, explanation: 'Unable to calculate deal score' };
+      }
+    }
+    setDealScores(scores);
+  };
+
+  // Update deal scores when comparison products change
+  useEffect(() => {
+    if (compareProducts.length > 0) {
+      calculateDealScores(compareProducts);
+    }
+  }, [compareProducts]);
+
   return (
     <div className="yp-yourpage-container">
       <Navbar />
@@ -880,18 +902,19 @@ const YourPage = () => {
                         🔥 Deal Meter
                       </td>
                       {compareProducts.map((p, idx) => {
-                        let dealScore = 0;
-                        if (p.originalPrice && p.price && p.originalPrice > p.price) {
-                          dealScore = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
-                        }
-                        let color = dealScore > 50 ? '#43a047' : dealScore > 20 ? '#ffa000' : '#e53935';
+                        const dealScore = dealScores[p.id] || 0;
+                        const dealLabel = getDealLabel(dealScore);
+                        let color = dealScore >= 80 ? '#43a047' : dealScore >= 60 ? '#2e7d32' : dealScore >= 40 ? '#ffa000' : dealScore >= 20 ? '#f57c00' : '#e53935';
                         return (
                           <td key={idx} style={{padding:'12px 14px', textAlign:'center', background:'#fff', borderBottom:'1px solid #f3e99c'}}>
                             <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4}}>
                               <div style={{width:90, height:10, background:'#f3f3f3', borderRadius:5, overflow:'hidden', marginBottom:4}}>
                                 <div style={{width:`${dealScore}%`, height:'100%', background:color, borderRadius:5, transition:'width 0.3s'}}></div>
                               </div>
-                              <span style={{fontWeight:700, color}}>{dealScore > 0 ? `${dealScore}/100` : 'No Deal'}</span>
+                              <span style={{fontWeight:700, color}}>
+                                {dealScores[p.id] === undefined ? 'Calculating...' : `${dealScore}/100`}
+                              </span>
+                              <span style={{fontSize:'0.8rem', color:'#666'}}>{dealLabel}</span>
                             </div>
                           </td>
                         );
