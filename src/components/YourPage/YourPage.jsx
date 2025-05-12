@@ -7,6 +7,7 @@ import ProductDetails from '../ProductDetails/ProductDetails';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import { FaBalanceScale, FaEye, FaTimes, FaShoppingCart } from 'react-icons/fa';
+import PreferredAmountPopup from '../PreferredAmountPopup/PreferredAmountPopup';
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -60,6 +61,8 @@ const YourPage = () => {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [wishlistPlatformFilter, setWishlistPlatformFilter] = useState('All');
+  const [showPreferredAmountPopup, setShowPreferredAmountPopup] = useState(false);
+  const [selectedProductForAmount, setSelectedProductForAmount] = useState(null);
 
   // Load user info from localStorage
   useEffect(() => {
@@ -333,10 +336,32 @@ const YourPage = () => {
 
   // Quick add to wishlist with animation
   const handleQuickAddToWishlist = (product) => {
-    if (wishlist.some(item => item.id === product.id)) {
-      return;
+    setSelectedProductForAmount(product);
+    setShowPreferredAmountPopup(true);
+  };
+
+  const handlePreferredAmountConfirm = async (amount) => {
+    if (!selectedProductForAmount) return;
+    const userEmail = userInfo?.email || localStorage.getItem('userEmail');
+    try {
+      // Call backend to add to wishlist with preferred amount
+      await fetch(`${API_BASE_URL}/add_to_list`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          u_id: selectedProductForAmount.id,
+          price: amount
+        })
+      });
+      // Update wishlist in state
+      setWishlist(prev => [...prev, { ...selectedProductForAmount, preferredAmount: amount, dateAdded: Date.now() }]);
+    } catch (error) {
+      // Optionally show error
+      console.error('Error adding to wishlist:', error);
     }
-    setWishlist(prev => [...prev, { ...product, dateAdded: Date.now() }]);
+    setShowPreferredAmountPopup(false);
+    setSelectedProductForAmount(null);
   };
 
   // Quick view modal
@@ -899,6 +924,18 @@ const YourPage = () => {
                 </div>
             </div>
           </div>
+        )}
+
+        {showPreferredAmountPopup && selectedProductForAmount && (
+          <PreferredAmountPopup
+            product={selectedProductForAmount}
+            onClose={() => {
+              setShowPreferredAmountPopup(false);
+              setSelectedProductForAmount(null);
+            }}
+            onConfirm={handlePreferredAmountConfirm}
+            userEmail={userInfo?.email || localStorage.getItem('userEmail')}
+          />
         )}
       </div>
     </div>
