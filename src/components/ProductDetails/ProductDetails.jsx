@@ -139,6 +139,77 @@ const ProductDetails = ({ product, onClose }) => {
                     )}
                   </div>
 
+                  {/* Price History Graph */}
+                  {product.priceHistory && product.priceHistory.length > 0 && (
+                    <div className="price-history-graph">
+                      <h3>Price History</h3>
+                      <div style={{ height: '300px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={product.priceHistory}
+                            margin={{ top: 10, right: 30, left: 30, bottom: 30 }}
+                          >
+                            <CartesianGrid 
+                              stroke="#eee" 
+                              strokeDasharray="3 3" 
+                              horizontal={true}
+                              vertical={false}
+                            />
+                            <XAxis 
+                              dataKey="date" 
+                              tick={{ fontSize: 12, fill: '#666' }}
+                              interval="preserveStartEnd"
+                              stroke="#666"
+                              tickFormatter={(value) => value}
+                              axisLine={{ stroke: '#666' }}
+                              tickLine={{ stroke: '#666' }}
+                            />
+                            <YAxis 
+                              tick={{ fontSize: 12, fill: '#666' }}
+                              domain={[
+                                (dataMin) => Math.floor(dataMin * 0.9),
+                                (dataMax) => Math.ceil(dataMax * 1.1)
+                              ]}
+                              stroke="#666"
+                              tickFormatter={(value) => `₹${value}`}
+                              width={80}
+                              axisLine={{ stroke: '#666' }}
+                              tickLine={{ stroke: '#666' }}
+                            />
+                            <Tooltip 
+                              formatter={(value) => [`₹${value}`, 'Price']}
+                              labelFormatter={(label) => `Date: ${label}`}
+                              contentStyle={{
+                                background: '#fff',
+                                border: '1px solid #eee',
+                                borderRadius: '8px',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                padding: '8px 12px'
+                              }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="price"
+                              stroke="#bfa600"
+                              strokeWidth={2}
+                              dot={{ 
+                                r: 4, 
+                                fill: '#bfa600',
+                                strokeWidth: 0
+                              }}
+                              activeDot={{ 
+                                r: 6, 
+                                fill: '#bfa600',
+                                strokeWidth: 0
+                              }}
+                              animationDuration={300}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rating-section">
                     <h3>Customer Reviews</h3>
                     <div className="rating-container">
@@ -158,9 +229,7 @@ const ProductDetails = ({ product, onClose }) => {
                     >
                       Buy Now
                     </a>
-                    <button className="close-button" onClick={handleCloseModal}>
-                      Close
-                    </button>
+                   
                   </div>
                 </div>
               </div>

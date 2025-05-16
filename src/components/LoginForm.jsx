@@ -79,13 +79,48 @@ const SnoopyAuth = () => {
       }
 
       try {
-        const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
-        console.log("GET /users response:", getResponse.data);
+        const getResponse = await axios.get(`${API_BASE_URL}/user/${user.uid}`);
+        console.log("GET /user response:", getResponse.data);
         setUserInfo(getResponse.data);
         localStorage.setItem('userInfo', JSON.stringify({ name: getResponse.data.name, email: getResponse.data.email }));
       } catch (getError) {
         console.error("Error fetching user from backend:", getError.response?.data || getError.message);
         setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
+      }
+
+      // Fetch tracked products
+      try {
+        const trackedResponse = await axios.post(`${API_BASE_URL}/tracked_objects`, {
+          email: user.email
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (trackedResponse.data && Array.isArray(trackedResponse.data.user_budgets)) {
+          // Transform the backend data to match our frontend structure
+          const transformedProducts = trackedResponse.data.user_budgets.map(item => ({
+            id: item.id || item._id,
+            name: item.name || item.product_name,
+            price: item.current_price,
+            originalPrice: item.original_price,
+            discountRate: item.discount_rate,
+            image: item.image_url,
+            platform: item.platform,
+            rating: item.rating,
+            ratingCount: item.rating_count,
+            priceHistory: item.price_history || [],
+            url: item.product_url,
+            preferredAmount: item.preferred_amount || null
+          }));
+          
+          // Store tracked products in localStorage
+          localStorage.setItem('wishlist', JSON.stringify(transformedProducts));
+        }
+      } catch (trackedError) {
+        console.error('Error fetching tracked products:', trackedError);
+        // Don't set error, just log it
       }
 
       localStorage.setItem('userEmail', user.email);
@@ -145,6 +180,56 @@ const SnoopyAuth = () => {
         console.log("Sending POST /users payload:", payload);
         const postResponse = await axios.post(`${API_BASE_URL}/users`, payload);
         console.log("POST /users response:", postResponse.data);
+
+        // Initialize tracked products for new user
+        console.log("Initializing tracked products for new user:", user.email);
+        try {
+          const trackedResponse = await axios.post(`${API_BASE_URL}/tracked_objects`, {
+            email: user.email
+          }, {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.log("Tracked products response:", trackedResponse.data);
+          
+          if (trackedResponse.data && Array.isArray(trackedResponse.data.user_budgets)) {
+            // Transform the backend data to match our frontend structure
+            const transformedProducts = trackedResponse.data.user_budgets.map(item => {
+              console.log("Processing tracked item:", item);
+              return {
+                id: item.id || item._id,
+                name: item.name || item.product_name,
+                price: item.current_price,
+                originalPrice: item.original_price,
+                discountRate: item.discount_rate,
+                image: item.image_url,
+                platform: item.platform,
+                rating: item.rating,
+                ratingCount: item.rating_count,
+                priceHistory: item.price_history || [],
+                url: item.product_url,
+                preferredAmount: item.preferred_amount || null
+              };
+            });
+            
+            console.log("Transformed products:", transformedProducts);
+            
+            // Store tracked products in localStorage
+            localStorage.setItem('wishlist', JSON.stringify(transformedProducts));
+            console.log("Successfully stored tracked products in localStorage");
+          } else {
+            console.log("No tracked products found, initializing empty array");
+            localStorage.setItem('wishlist', JSON.stringify([]));
+          }
+        } catch (trackedError) {
+          console.error('Error initializing tracked products:', trackedError);
+          console.error('Error details:', trackedError.response?.data || trackedError.message);
+          // Initialize with empty array if there's an error
+          localStorage.setItem('wishlist', JSON.stringify([]));
+          console.log("Initialized empty wishlist due to error");
+        }
       } catch (postError) {
         console.error("Error posting user to backend:", postError.response?.data || postError.message);
         // Don't set error, just log it
@@ -175,29 +260,99 @@ const SnoopyAuth = () => {
       const user = userCredential.user;
       console.log("Firebase login successful:", user);
 
+      // Store email immediately after successful login
+      const userEmail = user.email;
+      localStorage.setItem('userEmail', userEmail);
+      console.log("Stored user email:", userEmail);
+
       // Create user info object with fallback values
       const userInfo = {
         name: user.displayName || formData.email.split('@')[0],
-        email: user.email,
+        email: userEmail,
         firebase_uid: user.uid
       };
 
-      // Try to get user info from backend, but don't block on failure
+      // Try to get user info from backend, if not found create new user
       try {
-        const getResponse = await axios.get(`${API_BASE_URL}/users/${user.uid}`);
-        console.log("GET /users response:", getResponse.data);
+        const getResponse = await axios.get(`${API_BASE_URL}/user/${user.uid}`);
+        console.log("GET /user response:", getResponse.data);
         if (getResponse.data && getResponse.data.name) {
           userInfo.name = getResponse.data.name;
         }
       } catch (getError) {
-        console.error("Error fetching user from backend:", getError.response?.data || getError.message);
-        // Continue with the fallback user info
+        console.log("User not found in backend, creating new user...");
+        try {
+          // Create user in backend
+          const payload = {
+            firebase_uid: user.uid,
+            email: userEmail,
+            name: user.displayName || formData.email.split('@')[0],
+          };
+          console.log("Creating user in backend with payload:", payload);
+          const postResponse = await axios.post(`${API_BASE_URL}/user`, payload);
+          console.log("User created in backend:", postResponse.data);
+          if (postResponse.data && postResponse.data.name) {
+            userInfo.name = postResponse.data.name;
+          }
+        } catch (postError) {
+          console.error("Error creating user in backend:", postError.response?.data || postError.message);
+          // Continue with the fallback user info
+        }
       }
 
-      // Always store user info in localStorage
+      // Fetch tracked products using stored email
+      console.log("Fetching tracked products for user:", userEmail);
+      try {
+        const trackedResponse = await axios.post(`${API_BASE_URL}/tracked_objects`, {
+          email: userEmail
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log("Tracked products response:", trackedResponse.data);
+        
+        if (trackedResponse.data && Array.isArray(trackedResponse.data.user_budgets)) {
+          // Transform the backend data to match our frontend structure
+          const transformedProducts = trackedResponse.data.user_budgets.map(item => {
+            console.log("Processing tracked item:", item);
+            return {
+              id: item.id || item._id,
+              name: item.name || item.product_name,
+              price: item.current_price,
+              originalPrice: item.original_price,
+              discountRate: item.discount_rate,
+              image: item.image_url,
+              platform: item.platform,
+              rating: item.rating,
+              ratingCount: item.rating_count,
+              priceHistory: item.price_history || [],
+              url: item.product_url,
+              preferredAmount: item.preferred_amount || null
+            };
+          });
+          
+          console.log("Transformed products:", transformedProducts);
+          
+          // Store tracked products in localStorage
+          localStorage.setItem('wishlist', JSON.stringify(transformedProducts));
+          console.log("Successfully stored tracked products in localStorage");
+        } else {
+          console.log("No tracked products found, initializing empty array");
+          localStorage.setItem('wishlist', JSON.stringify([]));
+        }
+      } catch (trackedError) {
+        console.error('Error fetching tracked products:', trackedError);
+        console.error('Error details:', trackedError.response?.data || trackedError.message);
+        // Initialize with empty array if there's an error
+        localStorage.setItem('wishlist', JSON.stringify([]));
+        console.log("Initialized empty wishlist due to error");
+      }
+
+      // Store user info in localStorage
       setUserInfo(userInfo);
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      localStorage.setItem('userEmail', user.email);
 
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
       setSuccess("Signed in successfully!");

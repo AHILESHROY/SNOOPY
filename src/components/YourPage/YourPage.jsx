@@ -8,6 +8,16 @@ import PropTypes from 'prop-types';
 import axios from 'axios';
 import { FaBalanceScale, FaEye, FaTimes, FaShoppingCart } from 'react-icons/fa';
 import PreferredAmountPopup from '../PreferredAmountPopup/PreferredAmountPopup';
+import { analyzeDealWithAI } from '../../utils/aiDealAnalyzer';
+import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+const getDealLabel = (score) => {
+  if (score >= 80) return "Excellent";
+  if (score >= 60) return "Good";
+  if (score >= 40) return "Average";
+  if (score >= 20) return "Poor";
+  return "Worst";
+};
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -63,6 +73,9 @@ const YourPage = () => {
   const [wishlistPlatformFilter, setWishlistPlatformFilter] = useState('All');
   const [showPreferredAmountPopup, setShowPreferredAmountPopup] = useState(false);
   const [selectedProductForAmount, setSelectedProductForAmount] = useState(null);
+  const [dealScores, setDealScores] = useState({});
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('graph');
 
   // Load user info from localStorage
   useEffect(() => {
@@ -380,14 +393,57 @@ const YourPage = () => {
         const newSelection = [...prev, product];
         if (newSelection.length === 2) {
           setShowCompareModal(true);
+          setCompareLoading(true);
+          calculateDealScores(newSelection).finally(() => setCompareLoading(false));
         }
         return newSelection;
       }
       return prev;
     });
   };
-  const openCompareModal = () => setShowCompareModal(true);
-  const closeCompareModal = () => setShowCompareModal(false);
+
+  // Function to calculate deal scores for comparison
+  const calculateDealScores = async (products) => {
+    const scores = {};
+    for (const product of products) {
+      try {
+        const dealData = await analyzeDealWithAI({
+          ...product,
+          currentPrice: product.price,
+          originalPrice: product.originalPrice,
+          priceHistory: product.priceHistory,
+          rating: product.rating,
+          ratingCount: product.ratingCount,
+          competitorPrices: product.competitorPrices || []
+        });
+        scores[product.id] = dealData;
+      } catch (error) {
+        console.error(`Error calculating deal score for product ${product.id}:`, error);
+        scores[product.id] = { score: 0, explanation: 'Unable to calculate deal score' };
+      }
+    }
+    setDealScores(scores);
+  };
+
+  // Update deal scores when comparison products change
+  useEffect(() => {
+    if (compareProducts.length > 0) {
+      setCompareLoading(true);
+      calculateDealScores(compareProducts).finally(() => setCompareLoading(false));
+    }
+  }, [compareProducts]);
+
+  // Function to handle compare mode toggle
+  const handleCompareModeToggle = () => {
+    setCompareMode(prev => !prev);
+    setCompareProducts([]); // Clear selection when toggling
+  };
+
+  // Function to close compare modal
+  const closeCompareModal = () => {
+    setShowCompareModal(false);
+    setCompareProducts([]);
+  };
 
   // Helper to fetch and append more recommended products
   const fetchAndAppendRecommended = async () => {
@@ -504,27 +560,46 @@ const YourPage = () => {
     }
   };
 
-  // Function to calculate deal scores for comparison
-  const calculateDealScores = async (products) => {
-    const scores = {};
-    for (const product of products) {
-      try {
-        const dealData = await calculateHolisticDealScore(product);
-        scores[product.id] = dealData;
-      } catch (error) {
-        console.error(`Error calculating deal score for product ${product.id}:`, error);
-        scores[product.id] = { score: 0, explanation: 'Unable to calculate deal score' };
-      }
-    }
-    setDealScores(scores);
-  };
-
-  // Update deal scores when comparison products change
   useEffect(() => {
-    if (compareProducts.length > 0) {
-      calculateDealScores(compareProducts);
+    if (selectedProduct) {
+      analyzeDealWithAI({
+        ...selectedProduct,
+        currentPrice: selectedProduct.price,
+        originalPrice: selectedProduct.originalPrice,
+        priceHistory: selectedProduct.priceHistory,
+        rating: selectedProduct.rating,
+        ratingCount: selectedProduct.ratingCount,
+        competitorPrices: selectedProduct.competitorPrices || []
+      }).then(score => {
+        setDealScores(prev => ({
+          ...prev,
+          [selectedProduct.id]: score
+        }));
+      });
     }
-  }, [compareProducts]);
+  }, [selectedProduct]);
+
+  // Prepare synchronized price history data
+  const getSynchronizedPriceData = () => {
+    if (compareProducts.length !== 2) return [];
+
+    // Get all unique dates
+    const allDates = Array.from(new Set(
+      compareProducts.flatMap(p => 
+        p.priceHistory.map(h => h.date)
+      )
+    )).sort((a, b) => new Date(a) - new Date(b));
+
+    // Create synchronized data points
+    return allDates.map(date => {
+      const dataPoint = { date };
+      compareProducts.forEach((product, index) => {
+        const historyPoint = product.priceHistory.find(h => h.date === date);
+        dataPoint[`price${index}`] = historyPoint ? historyPoint.price : null;
+      });
+      return dataPoint;
+    });
+  };
 
   return (
     <div className="yp-yourpage-container">
@@ -670,10 +745,7 @@ const YourPage = () => {
             fontSize: 15
           }}>
             <button
-              onClick={() => {
-                setCompareMode((prev) => !prev);
-                setCompareProducts([]); // Clear selection when toggling
-              }}
+              onClick={handleCompareModeToggle}
               style={{
                 background: compareMode ? '#ffd54f' : '#fff',
                 color: '#111',
@@ -688,7 +760,7 @@ const YourPage = () => {
                 minWidth: 110
               }}
             >
-              Compares
+              {compareMode ? 'Exit Compare' : 'Compare'}
             </button>
             <select
               value={selectedPlatform}
@@ -869,82 +941,381 @@ const YourPage = () => {
               <div style={{marginBottom:8}}><b>Platform:</b> {quickViewProduct.platform}</div>
               <div style={{marginBottom:8}}><b>Rating:</b> {quickViewProduct.rating} ({quickViewProduct.ratingCount} reviews)</div>
               <a href={quickViewProduct.link} target="_blank" rel="noopener noreferrer" style={{color:'#ffb300', fontWeight:700}}>View on {quickViewProduct.platform}</a>
+              {dealScores[quickViewProduct.id] !== undefined && (
+                <div style={{ margin: '24px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, color: '#e74c3c', marginRight: 8 }}>Worst</span>
+                    <div style={{
+                      flex: 1,
+                      height: 18,
+                      background: '#eee',
+                      borderRadius: 9,
+                      overflow: 'hidden',
+                      position: 'relative',
+                      margin: '0 8px'
+                    }}>
+                      <div style={{
+                        width: `${dealScores[quickViewProduct.id].score}%`,
+                        height: '100%',
+                        background: `linear-gradient(90deg, #e74c3c 0%, #ffd54f 50%, #43a047 100%)`,
+                        borderRadius: 9,
+                        transition: 'width 0.5s'
+                      }} />
+                      <span style={{
+                        position: 'absolute',
+                        left: `${dealScores[quickViewProduct.id].score}%`,
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        fontWeight: 700,
+                        color: '#222',
+                        fontSize: 14
+                      }}>
+                        {dealScores[quickViewProduct.id].score}/100
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 13, color: '#43a047', marginLeft: 8 }}>Excellent</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Compare Modal */}
         {showCompareModal && (
-          <div className="compare-modal-overlay" style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={closeCompareModal}>
-            <div className="compare-modal-advanced" style={{background:'#fff', borderRadius:20, padding:'40px 32px 32px 32px', minWidth:400, maxWidth:1200, boxShadow:'0 8px 32px rgba(0,0,0,0.18)', position:'relative', width:'96vw', overflowX:'auto'}} onClick={e => e.stopPropagation()}>
-              <button onClick={closeCompareModal} style={{position:'absolute', top:22, right:22, background:'#ffd54f', border:'none', borderRadius:'50%', width:40, height:40, display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, cursor:'pointer', boxShadow:'0 2px 8px #ffd54f55'}} title="Close">
-                ×
+          <div className="compare-modal-overlay" style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 9998,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflowY: 'auto'
+          }} onClick={closeCompareModal}>
+            <div className="compare-modal-advanced" style={{
+              background: '#fff',
+              borderRadius: 20,
+              padding: '32px',
+              width: '90vw',
+              maxWidth: '1000px',
+              maxHeight: '90vh',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden'
+            }} onClick={e => e.stopPropagation()}>
+              <button onClick={closeCompareModal} style={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                background: '#ffd54f',
+                border: 'none',
+                borderRadius: '50%',
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 20,
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px #ffd54f55'
+              }} title="Close">×</button>
+              
+              <div style={{
+                fontWeight: 800,
+                fontSize: 24,
+                marginBottom: 24,
+                textAlign: 'center',
+                letterSpacing: 0.5,
+                color: '#222'
+              }}>Product Comparison</div>
+
+              {/* Tab Navigation */}
+              <div style={{
+                display: 'flex',
+                gap: '16px',
+                marginBottom: '24px',
+                justifyContent: 'center'
+              }}>
+                <button
+                  onClick={() => setActiveTab('graph')}
+                  style={{
+                    padding: '12px 24px',
+                    background: activeTab === 'graph' ? '#ffd54f' : '#f5f5f5',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    color: activeTab === 'graph' ? '#222' : '#666',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: activeTab === 'graph' ? '0 2px 8px #ffd54f55' : 'none'
+                  }}
+                >
+                  📊 Price History Graph
               </button>
-              <div style={{fontWeight:800, fontSize:26, marginBottom:22, textAlign:'center', letterSpacing:0.5}}>Product Comparison</div>
-              <div style={{overflowX:'auto'}}>
-                <table style={{width:'100%', borderCollapse:'separate', borderSpacing:0, minWidth:600}}>
-                  <thead>
-                    <tr style={{background:'#fffde7'}}>
-                      <th style={{textAlign:'left', padding:'12px 14px', fontWeight:700, fontSize:16, color:'#bfa600', minWidth:140, position:'sticky', left:0, background:'#fffde7', zIndex:2}}>Attribute</th>
-                      {compareProducts.map(product => (
-                        <th key={product.id} style={{textAlign:'center', padding:'12px 14px', fontWeight:700, fontSize:16, minWidth:200, background:'#fffde7', position:'sticky', top:0, zIndex:1}}>
-                          <img src={product.image} alt={product.name} style={{width:70, height:70, objectFit:'contain', borderRadius:10, marginBottom:8, boxShadow:'0 1px 4px #ffd54f33'}} />
-                          <div style={{fontWeight:700, fontSize:16, color:'#222', marginBottom:2}}>{product.name}</div>
-                          <div style={{fontSize:14, color:'#888'}}>{product.platform}</div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Deal Meter Row */}
-                    <tr>
-                      <td style={{padding:'12px 14px', fontWeight:600, background:'#fffde7', color:'#bfa600', borderRight:'1.5px solid #ffd54f', minWidth:140}}>
-                        🔥 Deal Meter
-                      </td>
-                      {compareProducts.map((p, idx) => {
-                        const dealScore = dealScores[p.id] || 0;
-                        const dealLabel = getDealLabel(dealScore);
-                        let color = dealScore >= 80 ? '#43a047' : dealScore >= 60 ? '#2e7d32' : dealScore >= 40 ? '#ffa000' : dealScore >= 20 ? '#f57c00' : '#e53935';
-                        return (
-                          <td key={idx} style={{padding:'12px 14px', textAlign:'center', background:'#fff', borderBottom:'1px solid #f3e99c'}}>
-                            <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:4}}>
-                              <div style={{width:90, height:10, background:'#f3f3f3', borderRadius:5, overflow:'hidden', marginBottom:4}}>
-                                <div style={{width:`${dealScore}%`, height:'100%', background:color, borderRadius:5, transition:'width 0.3s'}}></div>
-                              </div>
-                              <span style={{fontWeight:700, color}}>
-                                {dealScores[p.id] === undefined ? 'Calculating...' : `${dealScore}/100`}
-                              </span>
-                              <span style={{fontSize:'0.8rem', color:'#666'}}>{dealLabel}</span>
+                <button
+                  onClick={() => setActiveTab('table')}
+                  style={{
+                    padding: '12px 24px',
+                    background: activeTab === 'table' ? '#ffd54f' : '#f5f5f5',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    color: activeTab === 'table' ? '#222' : '#666',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: activeTab === 'table' ? '0 2px 8px #ffd54f55' : 'none'
+                  }}
+                >
+                  📋 Comparison Table
+                </button>
+                </div>
+
+              {/* Graph View */}
+              {activeTab === 'graph' && (
+                              <div style={{
+                  height: '400px', 
+                  padding: '24px',
+                  background: '#f9f9f9',
+                  borderRadius: '12px',
+                  boxSizing: 'border-box'
+                }}>
+                  <div style={{ height: '320px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={getSynchronizedPriceData()}
+                        margin={{ top: 10, right: 30, left: 30, bottom: 30 }}
+                      >
+                        <CartesianGrid 
+                          stroke="#eee" 
+                          strokeDasharray="3 3" 
+                          horizontal={true}
+                          vertical={false}
+                        />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fontSize: 12, fill: '#666' }}
+                          interval="preserveStartEnd"
+                          stroke="#666"
+                          tickFormatter={(value) => value}
+                          axisLine={{ stroke: '#666' }}
+                          tickLine={{ stroke: '#666' }}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 12, fill: '#666' }}
+                          domain={[
+                            (dataMin) => {
+                              const allPrices = getSynchronizedPriceData().flatMap(d => 
+                                [d.price0, d.price1].filter(p => p !== null)
+                              );
+                              return Math.floor(Math.min(...allPrices) * 0.9);
+                            },
+                            (dataMax) => {
+                              const allPrices = getSynchronizedPriceData().flatMap(d => 
+                                [d.price0, d.price1].filter(p => p !== null)
+                              );
+                              return Math.ceil(Math.max(...allPrices) * 1.1);
+                            }
+                          ]}
+                          stroke="#666"
+                          tickFormatter={(value) => `₹${value}`}
+                          width={80}
+                          axisLine={{ stroke: '#666' }}
+                          tickLine={{ stroke: '#666' }}
+                        />
+                        <Tooltip 
+                          formatter={(value) => [`₹${value}`, 'Price']}
+                          labelFormatter={(label) => `Date: ${label}`}
+                          contentStyle={{
+                            background: '#fff',
+                            border: '1px solid #eee',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                            padding: '8px 12px'
+                          }}
+                        />
+                        <Legend 
+                          wrapperStyle={{
+                            paddingTop: '20px',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                          }}
+                          verticalAlign="bottom"
+                          align="center"
+                        />
+                        {compareProducts.map((product, index) => (
+                          <Line
+                            key={`line-${product.id}`}
+                            dataKey={`price${index}`}
+                            name={`${product.name} (${product.platform})`}
+                            stroke={index === 0 ? '#27ae60' : '#e74c3c'}
+                            strokeWidth={2}
+                            dot={{ 
+                              r: 4, 
+                              fill: index === 0 ? '#27ae60' : '#e74c3c',
+                              strokeWidth: 0
+                            }}
+                            activeDot={{ 
+                              r: 6, 
+                              fill: index === 0 ? '#27ae60' : '#e74c3c',
+                              strokeWidth: 0
+                            }}
+                            animationDuration={300}
+                            connectNulls={true}
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
                             </div>
-                          </td>
+                          </div>
+                        )}
+
+              {/* Table View */}
+              {activeTab === 'table' && (
+                <div style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  paddingRight: 8
+                }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: `160px repeat(${compareProducts.length}, 1fr)`,
+                    gap: '0',
+                    minWidth: 600
+                  }}>
+                    {/* Header Row */}
+                    <div key="attribute-header" style={{
+                      background: '#fffde7',
+                      padding: '16px',
+                      fontWeight: 700,
+                      fontSize: 16,
+                      color: '#bfa600',
+                      position: 'sticky',
+                      left: 0,
+                      zIndex: 2
+                    }}>Attribute</div>
+                      {compareProducts.map((product, index) => (
+                      <div key={`header-${product.id}`} style={{
+                        background: '#fffde7',
+                        padding: '16px',
+                        textAlign: 'center',
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 1
+                      }}>
+                        <img src={product.image} alt={product.name} style={{
+                          width: 80,
+                          height: 80,
+                          objectFit: 'contain',
+                          borderRadius: 12,
+                          marginBottom: 12,
+                          boxShadow: '0 2px 8px #ffd54f33'
+                        }} />
+                        <div style={{
+                          fontWeight: 700,
+                          fontSize: 16,
+                          color: '#222',
+                          marginBottom: 4
+                        }}>{product.name}</div>
+                        <div style={{
+                          fontSize: 14,
+                          color: '#666'
+                        }}>{product.platform}</div>
+                      </div>
+                    ))}
+
+                    {/* Deal Meter Row */}
+                    <div key="deal-meter-header" style={{
+                      background: '#fffde7',
+                      padding: '16px',
+                      fontWeight: 600,
+                      color: '#bfa600',
+                      borderRight: '1.5px solid #ffd54f'
+                    }}>🔥 Deal Meter</div>
+                      {compareProducts.map((p, idx) => {
+                        let dealScore = 0;
+                        if (p.originalPrice && p.price && p.originalPrice > p.price) {
+                          dealScore = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
+                        }
+                        let color = dealScore > 50 ? '#43a047' : dealScore > 20 ? '#ffa000' : '#e53935';
+                        return (
+                        <div key={`deal-meter-${p.id}`} style={{
+                          padding: '16px',
+                          textAlign: 'center',
+                          background: '#fff',
+                          borderBottom: '1px solid #f3e99c'
+                              }}>
+                                <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 8
+                          }}>
+                                <div style={{
+                              width: 120,
+                              height: 12,
+                              background: '#f3f3f3',
+                              borderRadius: 6,
+                              overflow: 'hidden',
+                              marginBottom: 4
+                            }}>
+                              <div style={{
+                                width: `${dealScore}%`,
+                                height: '100%',
+                                background: color,
+                                borderRadius: 6,
+                                transition: 'width 0.3s'
+                              }}></div>
+                                </div>
+                            <span style={{
+                              fontWeight: 700,
+                              color,
+                              fontSize: 15
+                            }}>{dealScore > 0 ? `${dealScore}/100` : 'No Deal'}</span>
+                              </div>
+                          </div>
                         );
                       })}
-                    </tr>
+
                     {/* Attribute Rows */}
                     {[
                       { key: 'price', label: <span>Price</span>, get: p => p.price ? `₹${p.price}` : '—', icon: '💰' },
                       { key: 'originalPrice', label: <span>Original Price</span>, get: p => p.originalPrice ? `₹${p.originalPrice}` : '—', icon: '🏷️' },
                       { key: 'discount', label: <span>Discount</span>, get: p => p.discountRate || '—', icon: '🔖' },
-                      { key: 'brand', label: <span>Brand</span>, get: p => p.brand || '—', icon: '🏢' },
-                      { key: 'specs', label: <span>Specifications</span>, get: p => p.specs || '—', icon: '📋' },
-                      { key: 'availability', label: <span>Availability</span>, get: p => p.availability || '—', icon: '🚚' },
                       { key: 'rating', label: <span>Rating</span>, get: p => p.rating ? `${p.rating} (${p.ratingCount} reviews)` : '—', icon: '⭐' },
-                      { key: 'offers', label: <span>Offers</span>, get: p => p.offers || '—', icon: '🎁' },
                     ].map(attr => {
                       const values = compareProducts.map(p => attr.get(p));
                       const isDiff = values.length === 2 && values[0] !== values[1];
                       return (
-                        <tr key={attr.key}>
-                          <td style={{padding:'12px 14px', fontWeight:600, background:'#fffde7', color:'#bfa600', borderRight:'1.5px solid #ffd54f', minWidth:140}}>{attr.icon} {attr.label}</td>
+                        <React.Fragment key={`attr-${attr.key}`}>
+                          <div style={{
+                            background: '#fffde7',
+                            padding: '16px',
+                            fontWeight: 600,
+                            color: '#bfa600',
+                            borderRight: '1.5px solid #ffd54f'
+                          }}>{attr.icon} {attr.label}</div>
                           {values.map((val, idx) => (
-                            <td key={idx} style={{padding:'12px 14px', textAlign:'center', background: isDiff ? '#fff9c4' : '#fff', fontWeight:isDiff ? 700 : 500, borderBottom:'1px solid #f3e99c'}}>{val}</td>
+                            <div key={`${attr.key}-${compareProducts[idx].id}`} style={{
+                              padding: '16px',
+                              textAlign: 'center',
+                              background: isDiff ? '#fff9c4' : '#fff',
+                              fontWeight: isDiff ? 700 : 500,
+                              borderBottom: '1px solid #f3e99c',
+                              fontSize: 15
+                            }}>{val}</div>
                           ))}
-                        </tr>
+                        </React.Fragment>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </div>
                 </div>
+              )}
             </div>
           </div>
         )}

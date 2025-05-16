@@ -428,17 +428,40 @@
 }
 
 .price-history-graph {
-  width: 100%;
-  margin-bottom: 24px;
-  background: #f9f9f9;
+  background: #fff;
   border-radius: 12px;
-  padding: 16px 12px 8px 12px;
-  box-sizing: border-box;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .price-history-graph h3 {
-  margin: 0 0 10px 0;
+  margin: 0 0 20px 0;
   font-size: 18px;
-  color: #222;
+  color: #333;
   font-weight: 600;
+}
+
+.price-history-graph .recharts-wrapper {
+  margin: 0 auto;
+}
+
+.price-history-graph .recharts-cartesian-grid-horizontal line {
+  stroke: #eee;
+}
+
+.price-history-graph .recharts-line-curve {
+  transition: all 0.3s ease;
+}
+
+.price-history-graph .recharts-dot {
+  transition: all 0.2s ease;
+}
+
+.price-history-graph .recharts-dot:hover {
+  cursor: pointer;
+}
+
+.price-history-graph .recharts-tooltip-wrapper {
+  outline: none;
 } 
