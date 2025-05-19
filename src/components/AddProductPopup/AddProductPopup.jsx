@@ -30,7 +30,11 @@ const AddProductPopup = ({ onClose }) => {
     };
 
     try {
-      console.log('Sending request with payload:', payload);
+      console.log('AddProductPopup: Starting API request');
+      console.log('AddProductPopup: Request payload:', {
+        link: productLink,
+        platform: platform
+      });
       
       const response = await fetch(`${API_BASE_URL}/add_to_tracker`, {
         method: 'POST',
@@ -41,28 +45,39 @@ const AddProductPopup = ({ onClose }) => {
         body: JSON.stringify(payload)
       });
 
+      console.log('AddProductPopup: API Response status:', response.status);
       const data = await response.json();
-      console.log('API Response:', data);
+      console.log('AddProductPopup: API Response data:', data);
 
       if (!response.ok) {
+        console.error('AddProductPopup: API Error:', {
+          status: response.status,
+          data: data
+        });
         throw new Error(data.detail || data.message || 'Failed to add product');
       }
 
       // Set success response
+      console.log('AddProductPopup: Successfully added product with UID:', data.u_id);
       setResponse(`Success! Assigned UID: ${data.u_id}`);
       
       // Clear form and close popup after a short delay
       setTimeout(() => {
+        console.log('AddProductPopup: Clearing form and closing popup');
         setProductLink('');
         setPlatform('');
         onClose();
       }, 2000);
 
     } catch (error) {
-      console.error('Failed to add product:', error);
+      console.error('AddProductPopup: Failed to add product:', {
+        error: error.message,
+        stack: error.stack
+      });
       setError(error.message || 'Failed to add product. Please try again.');
     } finally {
       setIsLoading(false);
+      console.log('AddProductPopup: Request completed');
     }
   };
 

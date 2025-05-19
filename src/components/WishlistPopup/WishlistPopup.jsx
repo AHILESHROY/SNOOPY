@@ -281,7 +281,7 @@ const WishlistPopup = ({ wishlist, onClose, onAmountChange, onRemove, userEmail 
                       <div className="amount-input-container">
                         <input
                           type="number"
-                          value={localAmounts[product.id] || ''}
+                          value={localAmounts[product.id] ?? product.preferredAmount ?? ''}
                           placeholder="Enter amt.."
                           onChange={(e) => handleAmountChange(product.id, e.target.value, product.originalPrice)}
                           onKeyPress={(e) => handleKeyPress(e, product.id, e.target.value, product.originalPrice)}

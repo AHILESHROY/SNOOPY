@@ -416,34 +416,44 @@ const HomePage = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/add_product_link`, {
+      const payload = {
+        link: productLink,
+        platform: selectedPlatform
+      };
+      console.log('HomePage: Sending request to /add_to_tracker with payload:', payload);
+
+      const response = await fetch(`${API_BASE_URL}/add_to_tracker`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          email: userEmail,
-          product_link: productLink,
-          platform: selectedPlatform
-        })
+        body: JSON.stringify(payload)
       });
 
+      const responseText = await response.text();
+      console.log('HomePage: Raw API Response from /add_to_tracker:', responseText);
+
       if (!response.ok) {
-        throw new Error('Failed to submit product link');
+        let errorMessage = 'Failed to submit product link';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch (e) {
+          console.error('HomePage: Error parsing error response:', e);
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      if (data.success) {
-        setShowLinkModal(false);
-        setProductLink('');
-        window.location.reload();
-      } else {
-        setLinkError(data.message || 'Failed to submit product link');
-      }
+      const data = JSON.parse(responseText);
+      console.log('HomePage: Parsed API Response:', data);
+
+      setShowLinkModal(false);
+      setProductLink('');
+      window.location.reload();
     } catch (error) {
-      setLinkError('Error submitting link. Please try again.');
-      console.error('Error submitting link:', error);
+      setLinkError(error.message || 'Error submitting link. Please try again.');
+      console.error('HomePage: Error submitting link:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -968,6 +978,16 @@ const HomePage = () => {
               fontWeight: 600
             }}>Add Product Link</h2>
             
+            {!userEmail && (
+              <p style={{
+                color: '#ff6b6b',
+                fontSize: 14,
+                marginBottom: 16
+              }}>
+                You must be logged in to add a product link.
+              </p>
+            )}
+
             <form onSubmit={handleLinkSubmit}>
               <div style={{ marginBottom: 18 }}>
                 <label style={{
@@ -998,6 +1018,7 @@ const HomePage = () => {
                     cursor: 'pointer',
                   }}
                   required
+                  disabled={!userEmail}
                 >
                   {platformOptions.map(opt => (
                     <option key={opt.value} value={opt.value} style={{ color: '#222', background: '#fff' }}>{opt.label}</option>
@@ -1029,6 +1050,7 @@ const HomePage = () => {
                     outline: 'none'
                   }}
                   required
+                  disabled={!userEmail}
                 />
                 {linkError && (
                   <p style={{
@@ -1041,7 +1063,7 @@ const HomePage = () => {
               
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !userEmail}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -1051,8 +1073,8 @@ const HomePage = () => {
                   border: 'none',
                   fontSize: 16,
                   fontWeight: 600,
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  opacity: isSubmitting ? 0.7 : 1,
+                  cursor: (isSubmitting || !userEmail) ? 'not-allowed' : 'pointer',
+                  opacity: (isSubmitting || !userEmail) ? 0.7 : 1,
                   transition: 'opacity 0.2s'
                 }}
               >
