@@ -6,10 +6,12 @@ import ProductCard from '../ProductCard/ProductCard';
 import ProductDetails from '../ProductDetails/ProductDetails';
 import PropTypes from 'prop-types';
 import axios from 'axios';
-import { FaBalanceScale, FaEye, FaTimes, FaShoppingCart } from 'react-icons/fa';
+import { FaBalanceScale, FaTimes, FaShoppingCart } from 'react-icons/fa';
 import PreferredAmountPopup from '../PreferredAmountPopup/PreferredAmountPopup';
 import { analyzeDealWithAI } from '../../utils/aiDealAnalyzer';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { auth } from '../firebase'; // Import Firebase auth
+import { onAuthStateChanged } from 'firebase/auth'; // Import Firebase auth state listener
 
 const getDealLabel = (score) => {
   if (score >= 80) return "Excellent";
@@ -29,24 +31,7 @@ const getGreeting = () => {
 const YourPage = () => {
   const API_BASE_URL = 'http://13.203.223.3:8000';
   const navigate = useNavigate();
-  const [wishlist, setWishlist] = useState(() => {
-    try {
-      const saved = localStorage.getItem('wishlist');
-      if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter(item =>
-        item &&
-        typeof item === 'object' &&
-        'id' in item &&
-        'name' in item &&
-        'image' in item
-      );
-    } catch (error) {
-      console.error('Error loading wishlist from localStorage:', error);
-      return [];
-    }
-  });
+  const [wishlist, setWishlist] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [sortOption, setSortOption] = useState('default');
   const [userInfo, setUserInfo] = useState(null);
@@ -61,7 +46,6 @@ const YourPage = () => {
   const [recommendedError, setRecommendedError] = useState(null);
   const wishlistRef = useRef(null);
   const recommendedRef = useRef(null);
-  const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [compareProducts, setCompareProducts] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
@@ -76,32 +60,238 @@ const YourPage = () => {
   const [dealScores, setDealScores] = useState({});
   const [compareLoading, setCompareLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('graph');
+  const [loadingUserInfo, setLoadingUserInfo] = useState(true); // Add loading state for user info
+  const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail') || ''); // Manage userEmail as state
 
-  // Load user info from localStorage
-  useEffect(() => {
+  const fetchUserInfo = async (email, firebaseUid = null) => {
     try {
-      const storedUserInfo = localStorage.getItem('userInfo');
-      if (storedUserInfo) {
-        const parsed = JSON.parse(storedUserInfo);
-        setUserInfo(parsed);
-        setProfileForm({ name: parsed.name, email: parsed.email });
-      } else {
-        setUserInfo(null);
-        setProfileError('User not logged in. Please log in to view your profile.');
+      const response = await axios.get(`${API_BASE_URL}/users`, {
+        params: { email }
+      });
+      if (response.data && response.data.length > 0) {
+        const user = response.data[0];
+        const userInfoData = {
+          name: user.name || 'Unknown User',
+          email: user.email || email,
+          firebase_uid: user.firebase_uid || firebaseUid || ''
+        };
+        setUserInfo(userInfoData);
+        setProfileForm({ name: userInfoData.name, email: userInfoData.email });
+        localStorage.setItem('userInfo', JSON.stringify(userInfoData));
+        return true;
       }
+      return false;
     } catch (error) {
-      console.error('Error loading user info from localStorage:', error);
-      setUserInfo(null);
-      setProfileError('Failed to load user profile.');
+      console.error('Error fetching user info from backend:', error);
+      return false;
     }
+  };
+
+  const syncUserWithBackend = async (firebaseUser) => {
+    const email = firebaseUser.email;
+    const uid = firebaseUser.uid;
+    const name = firebaseUser.displayName || email.split('@')[0];
+
+    // Try to fetch user from backend
+    let userExists = await fetchUserInfo(email, uid);
+    if (!userExists) {
+      // If user doesn't exist in backend, create them
+      try {
+        const payload = {
+          firebase_uid: uid,
+          email: email,
+          name: name
+        };
+        await axios.post(`${API_BASE_URL}/users`, payload);
+        console.log('User created in backend:', payload);
+        // Fetch again after creating
+        await fetchUserInfo(email, uid);
+      } catch (postError) {
+        console.error('Error creating user in backend:', postError);
+        // Fallback to Firebase user data
+        const userInfoData = {
+          name: name,
+          email: email,
+          firebase_uid: uid
+        };
+        setUserInfo(userInfoData);
+        setProfileForm({ name: userInfoData.name, email: userInfoData.email });
+        localStorage.setItem('userInfo', JSON.stringify(userInfoData));
+      }
+    }
+  };
+
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      setLoadingUserInfo(true);
+      try {
+        // First, check localStorage
+        const storedUserInfo = localStorage.getItem('userInfo');
+        if (storedUserInfo) {
+          const parsed = JSON.parse(storedUserInfo);
+          if (parsed.name && parsed.email) {
+            setUserInfo(parsed);
+            setProfileForm({ name: parsed.name, email: parsed.email });
+            setUserEmail(parsed.email);
+          }
+        }
+
+        // Listen for Firebase auth state
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          if (firebaseUser) {
+            const email = firebaseUser.email;
+            setUserEmail(email);
+            localStorage.setItem('userEmail', email);
+
+            // Sync with backend
+            await syncUserWithBackend(firebaseUser);
+          } else {
+            // No user logged in
+            setUserInfo(null);
+            setUserEmail('');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('userInfo');
+            setProfileError('User not logged in. Please log in to view your profile.');
+          }
+          setLoadingUserInfo(false);
+        });
+
+        return () => unsubscribe();
+      } catch (error) {
+        console.error('Error loading user info:', error);
+        setUserInfo(null);
+        setProfileError('Failed to load user profile.');
+        setLoadingUserInfo(false);
+      }
+    };
+
+    loadUserInfo();
   }, []);
 
-  // Fetch recommended products with fallback
+  const fetchWishlist = async () => {
+    if (!userEmail) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/get_tracked_objects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ email: userEmail })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data?.user_budgets?.[0]) {
+        const trackedObjects = data.user_budgets[0];
+        const wishlistItems = trackedObjects.u_id.map((id, index) => ({
+          id,
+          name: trackedObjects.product_name?.[index] || 'Unknown Product',
+          image: trackedObjects.image_url?.[index] || '',
+          price: trackedObjects.product_price?.[index] || 0,
+          platform: trackedObjects.platform?.[index] || 'Unknown',
+          preferredAmount: trackedObjects.preferred_amount?.[index] || null,
+          dateAdded: trackedObjects.date_added?.[index] || Date.now(),
+          link: trackedObjects.link?.[index] || '',
+          originalPrice: trackedObjects.original_price?.[index] || 0,
+          rating: trackedObjects.ratings?.[index] || 0,
+          ratingCount: trackedObjects.number_of_ratings?.[index] || 0,
+          discountRate: trackedObjects.discount_rate?.[index] || "0%",
+          priceHistory: [] // Initially empty
+        }));
+
+        const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        const pricesResponse = await fetch(`${API_BASE_URL}/prices`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        let priceHistoryData = [];
+        if (pricesResponse.ok) {
+          const pricesData = await pricesResponse.json();
+          priceHistoryData = pricesData.data || [];
+        }
+
+        const priceHistoryMap = new Map();
+        priceHistoryData.forEach(item => {
+          if (item.record_date && item.price) {
+            const history = item.record_date.map((date, index) => ({
+              date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              price: item.price[index]
+            }));
+            priceHistoryMap.set(item.u_id, history);
+          }
+        });
+
+        console.log('Price History Map:', Array.from(priceHistoryMap.entries()));
+
+        const productsMap = new Map();
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          if (productsData?.data) {
+            productsData.data.forEach(p => productsMap.set(p.u_id, p));
+          }
+        }
+
+        const updatedWishlistItems = wishlistItems.map(item => {
+          const completeProduct = productsMap.get(item.id);
+          const priceHistory = priceHistoryMap.get(item.id) ?? [];
+
+          console.log(`Wishlist Item ID: ${item.id}, Price History:`, priceHistory);
+
+          if (completeProduct) {
+            return {
+              ...item,
+              name: completeProduct.product_name || item.name,
+              image: completeProduct.image_url || item.image,
+              price: completeProduct.price || item.price,
+              platform: completeProduct.platform || item.platform,
+              link: completeProduct.link || item.link,
+              originalPrice: completeProduct.original_price || item.originalPrice,
+              rating: completeProduct.ratings || item.rating,
+              ratingCount: completeProduct.number_of_ratings || item.ratingCount,
+              discountRate: completeProduct.discount_rate || item.discountRate,
+              priceHistory: priceHistory
+            };
+          }
+          return { ...item, priceHistory: priceHistory };
+        });
+
+        setWishlist(updatedWishlistItems);
+      } else {
+        setWishlist([]);
+      }
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchWishlist();
+    const pollInterval = setInterval(fetchWishlist, 5000);
+    return () => clearInterval(pollInterval);
+  }, [userEmail]); // Trigger fetchWishlist when userEmail changes
+
   const fetchRecommendedProducts = async () => {
     try {
       setLoadingRecommended(true);
       setRecommendedError(null);
-      // Try recommendations endpoint first
       let response = await fetch(`${API_BASE_URL}/recommendations`, {
         method: 'GET',
         headers: {
@@ -117,7 +307,6 @@ const YourPage = () => {
           throw new Error('Invalid data format received from server');
         }
       } else {
-        // Fallback to products_complete
         response = await fetch(`${API_BASE_URL}/products_complete`, {
           method: 'GET',
           headers: {
@@ -133,10 +322,8 @@ const YourPage = () => {
         if (!data.data || !Array.isArray(data.data)) {
           throw new Error('Invalid data format received from server');
         }
-        // Shuffle and pick 10 random products
         data.data = [...data.data].sort(() => 0.5 - Math.random()).slice(0, 10);
       }
-      // Always fetch price history after fetching products
       const pricesResponse = await fetch(`${API_BASE_URL}/prices`, {
         method: 'GET',
         headers: {
@@ -157,7 +344,6 @@ const YourPage = () => {
           }
         });
       }
-      // Attach priceHistory to each product
       const transformedProducts = data.data.map(product => ({
         id: product.u_id,
         name: product.product_name,
@@ -184,45 +370,6 @@ const YourPage = () => {
     fetchRecommendedProducts();
   }, []);
 
-  // Add a function to handle wishlist updates
-  const handleWishlistUpdate = (productId, newAmount) => {
-    setWishlist(prev => {
-      const updatedWishlist = prev.map(item =>
-        item.id === productId
-          ? { ...item, preferredAmount: parseFloat(newAmount) }
-          : item
-      );
-      // Update localStorage
-      localStorage.setItem('wishlist', JSON.stringify(updatedWishlist));
-      return updatedWishlist;
-    });
-  };
-
-  // Modify the handlePreferredAmountChange function
-  const handlePreferredAmountChange = (productId, value) => {
-    handleWishlistUpdate(productId, value);
-  };
-
-  // Add an effect to sync with localStorage on mount
-  useEffect(() => {
-    const savedWishlist = localStorage.getItem('wishlist');
-    if (savedWishlist) {
-      try {
-        const parsedWishlist = JSON.parse(savedWishlist);
-        if (Array.isArray(parsedWishlist)) {
-          setWishlist(parsedWishlist);
-        }
-      } catch (error) {
-        console.error('Error parsing wishlist from localStorage:', error);
-      }
-    }
-  }, []);
-
-  // Add an effect to sync with localStorage on changes
-  useEffect(() => {
-    localStorage.setItem('wishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
-
   const handleViewProduct = (product) => {
     setSelectedProduct(product);
   };
@@ -233,12 +380,6 @@ const YourPage = () => {
 
   const handleRemoveFromWishlist = async (product) => {
     try {
-      const userEmail = localStorage.getItem('userEmail');
-      if (!userEmail) {
-        console.error('User email not found');
-        return;
-      }
-
       const response = await fetch(`${API_BASE_URL}/remove_from_list`, {
         method: 'POST',
         headers: {
@@ -256,19 +397,15 @@ const YourPage = () => {
         throw new Error(errorData.message || errorData.detail || 'Failed to remove item');
       }
 
-      // Only remove from local state if API call is successful
-      setWishlist(prev => prev.filter(p => p.id !== product.id));
+      await fetchWishlist();
     } catch (error) {
       console.error('Failed to remove item:', error);
-      // You might want to show an error message to the user here
     }
   };
 
   const handleAddToWishlist = (product) => {
-    setWishlist(prev => {
-      if (prev.some(item => item.id === product.id)) return prev;
-      return [...prev, { ...product, dateAdded: Date.now() }];
-    });
+    setSelectedProductForAmount(product);
+    setShowPreferredAmountPopup(true);
   };
 
   const handleProfileEditToggle = () => {
@@ -296,6 +433,7 @@ const YourPage = () => {
       });
       const updatedUserInfo = { ...userInfo, name: profileForm.name, email: profileForm.email };
       setUserInfo(updatedUserInfo);
+      setUserEmail(profileForm.email); // Update userEmail state
       localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
       localStorage.setItem('userEmail', profileForm.email);
       setProfileSuccess('Profile updated successfully!');
@@ -324,30 +462,45 @@ const YourPage = () => {
     container.scrollTo({ left: newScroll, behavior: 'smooth' });
   };
 
-  // Improved scroll for recommended slider
-  const scrollRecommended = (direction) => {
+  const scrollRecommended = async (direction) => {
     const container = recommendedRef.current;
     if (!container) return;
     const visibleWidth = container.clientWidth;
-    const maxScroll = container.scrollWidth - visibleWidth;
+    const totalWidth = container.scrollWidth;
+    const maxScroll = totalWidth - visibleWidth;
     let newScroll = recommendedScroll + (direction === 'left' ? -visibleWidth : visibleWidth);
     newScroll = Math.max(0, Math.min(newScroll, maxScroll));
-    setRecommendedScroll(newScroll);
-    container.scrollTo({ left: newScroll, behavior: 'smooth' });
+
+    console.log(`Scrolling ${direction}: recommendedScroll=${recommendedScroll}, newScroll=${newScroll}, maxScroll=${maxScroll}, totalWidth=${totalWidth}, visibleWidth=${visibleWidth}`);
+
+    if (direction === 'right' && newScroll >= maxScroll && !loadingMoreRec) {
+      console.log('Reached end, fetching more products...');
+      await fetchAndAppendRecommended();
+      setTimeout(() => {
+        const updatedMaxScroll = container.scrollWidth - container.clientWidth;
+        const adjustedScroll = Math.min(newScroll, updatedMaxScroll);
+        console.log(`After fetch: adjustedScroll=${adjustedScroll}, updatedMaxScroll=${updatedMaxScroll}`);
+        setRecommendedScroll(adjustedScroll);
+        container.scrollTo({ left: adjustedScroll, behavior: 'smooth' });
+      }, 100);
+    } else {
+      setRecommendedScroll(newScroll);
+      container.scrollTo({ left: newScroll, behavior: 'smooth' });
+    }
   };
 
-  // Keep arrows in sync with scroll position
   useEffect(() => {
     const container = recommendedRef.current;
     if (!container) return;
     const handleScroll = () => {
-      setRecommendedScroll(container.scrollLeft);
+      const currentScroll = container.scrollLeft;
+      setRecommendedScroll(currentScroll);
+      console.log(`Scroll event: scrollLeft=${currentScroll}`);
     };
     container.addEventListener('scroll', handleScroll);
     return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [recommendedProducts]);
 
-  // Quick add to wishlist with animation
   const handleQuickAddToWishlist = (product) => {
     setSelectedProductForAmount(product);
     setShowPreferredAmountPopup(true);
@@ -355,35 +508,32 @@ const YourPage = () => {
 
   const handlePreferredAmountConfirm = async (amount) => {
     if (!selectedProductForAmount) return;
-    const userEmail = userInfo?.email || localStorage.getItem('userEmail');
     try {
-      // Call backend to add to wishlist with preferred amount
-      await fetch(`${API_BASE_URL}/add_to_list`, {
+      const response = await fetch(`${API_BASE_URL}/add_to_list`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           email: userEmail,
           u_id: selectedProductForAmount.id,
           price: amount
         })
       });
-      // Update wishlist in state
-      setWishlist(prev => [...prev, { ...selectedProductForAmount, preferredAmount: amount, dateAdded: Date.now() }]);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      await fetchWishlist();
     } catch (error) {
-      // Optionally show error
       console.error('Error adding to wishlist:', error);
     }
     setShowPreferredAmountPopup(false);
     setSelectedProductForAmount(null);
   };
 
-  // Quick view modal
-  const handleQuickView = (product) => {
-    setQuickViewProduct(product);
-  };
-  const closeQuickView = () => setQuickViewProduct(null);
-
-  // Compare feature
   const handleCompareToggle = (product) => {
     setCompareProducts(prev => {
       if (prev.some(p => p.id === product.id)) {
@@ -402,7 +552,6 @@ const YourPage = () => {
     });
   };
 
-  // Function to calculate deal scores for comparison
   const calculateDealScores = async (products) => {
     const scores = {};
     for (const product of products) {
@@ -425,7 +574,6 @@ const YourPage = () => {
     setDealScores(scores);
   };
 
-  // Update deal scores when comparison products change
   useEffect(() => {
     if (compareProducts.length > 0) {
       setCompareLoading(true);
@@ -433,19 +581,16 @@ const YourPage = () => {
     }
   }, [compareProducts]);
 
-  // Function to handle compare mode toggle
   const handleCompareModeToggle = () => {
     setCompareMode(prev => !prev);
-    setCompareProducts([]); // Clear selection when toggling
+    setCompareProducts([]);
   };
 
-  // Function to close compare modal
   const closeCompareModal = () => {
     setShowCompareModal(false);
     setCompareProducts([]);
   };
 
-  // Helper to fetch and append more recommended products
   const fetchAndAppendRecommended = async () => {
     setLoadingMoreRec(true);
     try {
@@ -464,7 +609,6 @@ const YourPage = () => {
           throw new Error('Invalid data format received from server');
         }
       } else {
-        // Fallback to products_complete
         response = await fetch(`${API_BASE_URL}/products_complete`, {
           method: 'GET',
           headers: {
@@ -480,10 +624,8 @@ const YourPage = () => {
         if (!data.data || !Array.isArray(data.data)) {
           throw new Error('Invalid data format received from server');
         }
-        // Shuffle and pick 10 random products
         data.data = [...data.data].sort(() => 0.5 - Math.random()).slice(0, 10);
       }
-      // Always fetch price history after fetching products
       const pricesResponse = await fetch(`${API_BASE_URL}/prices`, {
         method: 'GET',
         headers: {
@@ -504,7 +646,6 @@ const YourPage = () => {
           }
         });
       }
-      // Attach priceHistory to each product
       let newProducts = data.data.map(product => ({
         id: product.u_id,
         name: product.product_name,
@@ -518,20 +659,16 @@ const YourPage = () => {
         link: product.link,
         priceHistory: priceHistoryMap.get(product.u_id) || []
       }));
-      // Filter by platform
       if (selectedPlatform !== 'All') {
         newProducts = newProducts.filter(p => p.platform === selectedPlatform);
       }
-      // Remove duplicates
       const existingIds = new Set(recommendedProducts.map(p => p.id));
       newProducts = newProducts.filter(p => !existingIds.has(p.id));
-      // Filter by price range
       newProducts = newProducts.filter(p => {
         const min = minPrice !== '' ? parseFloat(minPrice) : -Infinity;
         const max = maxPrice !== '' ? parseFloat(maxPrice) : Infinity;
         return p.price >= min && p.price <= max;
       });
-      // Sort
       switch (recSortOption) {
         case 'price-low-high':
           newProducts = [...newProducts].sort((a, b) => (a.price || 0) - (b.price || 0));
@@ -553,7 +690,6 @@ const YourPage = () => {
       }
       setRecommendedProducts(prev => [...prev, ...newProducts]);
     } catch (error) {
-      // Optionally log error, do nothing (no toast)
       console.error('Error loading more recommended products:', error);
     } finally {
       setLoadingMoreRec(false);
@@ -579,18 +715,15 @@ const YourPage = () => {
     }
   }, [selectedProduct]);
 
-  // Prepare synchronized price history data
   const getSynchronizedPriceData = () => {
     if (compareProducts.length !== 2) return [];
 
-    // Get all unique dates
     const allDates = Array.from(new Set(
-      compareProducts.flatMap(p => 
+      compareProducts.flatMap(p =>
         p.priceHistory.map(h => h.date)
       )
     )).sort((a, b) => new Date(a) - new Date(b));
 
-    // Create synchronized data points
     return allDates.map(date => {
       const dataPoint = { date };
       compareProducts.forEach((product, index) => {
@@ -606,52 +739,59 @@ const YourPage = () => {
       <Navbar />
       <div className="yp-yourpage-content">
         <div className="yp-profile-container">
-          <h2 className="yp-profile-title">
-            {userInfo ? `${getGreeting()}, ${userInfo.name}!` : 'Welcome!'}
-          </h2>
-          {userInfo && (
-            <div className="yp-profile-details">
-              {isEditingProfile ? (
-                <form onSubmit={handleProfileSubmit} className="yp-profile-form">
-                  <div className="yp-form-group">
-                    <label>Name:</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={profileForm.name}
-                      onChange={handleProfileChange}
-                      required
-                    />
-                  </div>
-                  <div className="yp-form-group">
-                    <label>Email:</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={profileForm.email}
-                      onChange={handleProfileChange}
-                      required
-                    />
-                  </div>
-                  <div className="yp-form-actions">
-                    <button type="submit" className="yp-save-button">Save</button>
-                    <button type="button" className="yp-cancel-button" onClick={handleProfileEditToggle}>
-                      Cancel
-                    </button>
-                  </div>
-                  {profileError && <p className="yp-profile-error">{profileError}</p>}
-                  {profileSuccess && <p className="yp-profile-success">{profileSuccess}</p>}
-                </form>
-              ) : (
-                <div className="yp-profile-view">
-                  <p><strong>Name:</strong> {userInfo.name}</p>
-                  <p><strong>Email:</strong> {userInfo.email}</p>
-                  <button className="yp-edit-button" onClick={handleProfileEditToggle}>
-                    Edit Profile
-                  </button>
+          {loadingUserInfo ? (
+            <p>Loading user info...</p>
+          ) : (
+            <>
+              <h2 className="yp-profile-title">
+                {userInfo ? `${getGreeting()}, ${userInfo.name || 'User'}!` : 'Welcome!'}
+              </h2>
+              {profileError && <p className="yp-profile-error">{profileError}</p>}
+              {userInfo && (
+                <div className="yp-profile-details">
+                  {isEditingProfile ? (
+                    <form onSubmit={handleProfileSubmit} className="yp-profile-form">
+                      <div className="yp-form-group">
+                        <label>Name:</label>
+                        <input
+                          type="text"
+                          name="name"
+                          value={profileForm.name}
+                          onChange={handleProfileChange}
+                          required
+                        />
+                      </div>
+                      <div className="yp-form-group">
+                        <label>Email:</label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={profileForm.email}
+                          onChange={handleProfileChange}
+                          required
+                        />
+                      </div>
+                      <div className="yp-form-actions">
+                        <button type="submit" className="yp-save-button">Save</button>
+                        <button type="button" className="yp-cancel-button" onClick={handleProfileEditToggle}>
+                          Cancel
+                        </button>
+                      </div>
+                      {profileError && <p className="yp-profile-error">{profileError}</p>}
+                      {profileSuccess && <p className="yp-profile-success">{profileSuccess}</p>}
+                    </form>
+                  ) : (
+                    <div className="yp-profile-view">
+                      <p><strong>Name:</strong> {userInfo.name || 'Unknown User'}</p>
+                      <p><strong>Email:</strong> {userInfo.email || 'N/A'}</p>
+                      <button className="yp-edit-button" onClick={handleProfileEditToggle}>
+                        Edit Profile
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
 
@@ -710,21 +850,17 @@ const YourPage = () => {
                     <div className="yp-wishlist-card-remove" onClick={() => handleRemoveFromWishlist(product)} title="Remove">
                       <i className="fa fa-trash"></i>
                     </div>
-                    <div className="yp-wishlist-card-quickview" onClick={() => handleQuickView(product)} title="Quick View">
+                    <div className="yp-wishlist-card-quickview" onClick={() => handleViewProduct(product)} title="View Details">
                       <i className="fa fa-eye"></i>
                     </div>
                     <img src={product.image} alt={product.name} className="yp-wishlist-card-image" />
                     <div className="yp-wishlist-card-info">
                       <div className="yp-wishlist-card-name">{product.name}</div>
                       <div className="yp-wishlist-card-price">₹{product.price}</div>
-                      {product.preferredAmount ? (
+                      {product.preferredAmount && (
                         <div className="yp-wishlist-card-progress">
                           <div className="yp-wishlist-card-progress-bar" style={{width: `${Math.min(100, Math.round((product.price / product.preferredAmount) * 100))}%`}}></div>
                           <span className="yp-wishlist-card-progress-label">Goal: ₹{product.preferredAmount}</span>
-                        </div>
-                      ) : (
-                        <div className="yp-wishlist-card-goal-text">
-                          GOAL: ₹{product.price}
                         </div>
                       )}
                     </div>
@@ -854,14 +990,14 @@ const YourPage = () => {
               <button
                 className="yp-slider-arrow yp-left-arrow"
                 onClick={() => scrollRecommended('left')}
-                disabled={loadingMoreRec}
+                disabled={recommendedScroll <= 0}
+                style={{ left: '10px' }}
               >
-                &larr;
+                ←
               </button>
               <div className="yp-recommended-slider" ref={recommendedRef}>
                 {(() => {
                   let filtered = selectedPlatform === 'All' ? recommendedProducts : recommendedProducts.filter(p => p.platform === selectedPlatform);
-                  // Filter by price range
                   filtered = filtered.filter(p => {
                     const min = minPrice !== '' ? parseFloat(minPrice) : -Infinity;
                     const max = maxPrice !== '' ? parseFloat(maxPrice) : Infinity;
@@ -904,20 +1040,11 @@ const YourPage = () => {
               </div>
               <button
                 className="yp-slider-arrow yp-right-arrow"
-                onClick={() => {
-                  const container = recommendedRef.current;
-                  if (container) {
-                    const atEnd = container.scrollLeft >= (container.scrollWidth - container.clientWidth - 2);
-                    if (atEnd) {
-                      fetchAndAppendRecommended();
-                    } else {
-                      scrollRecommended('right');
-                    }
-                  }
-                }}
+                onClick={() => scrollRecommended('right')}
                 disabled={loadingMoreRec}
+                style={{ right: '10px' }}
               >
-                {loadingMoreRec ? <span style={{display:'inline-block',width:18,textAlign:'center'}}>&#8635;</span> : '→'}
+                →
               </button>
             </div>
           )}
@@ -927,61 +1054,10 @@ const YourPage = () => {
           <ProductDetails
             product={selectedProduct}
             onClose={handleCloseProductDetails}
+            dealScore={dealScores[selectedProduct.id]}
           />
         )}
 
-        {/* Quick View Modal */}
-        {quickViewProduct && (
-          <div className="quick-view-modal-overlay" style={{position: 'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.4)', zIndex:9998, display:'flex', alignItems:'center', justifyContent:'center'}} onClick={closeQuickView}>
-            <div className="quick-view-modal" style={{background:'#fff', borderRadius:12, padding:32, minWidth:320, maxWidth:400, boxShadow:'0 8px 32px rgba(0,0,0,0.18)', position:'relative'}} onClick={e => e.stopPropagation()}>
-              <button onClick={closeQuickView} style={{position:'absolute', top:12, right:12, background:'none', border:'none', fontSize:22, cursor:'pointer'}}>&times;</button>
-              <img src={quickViewProduct.image} alt={quickViewProduct.name} style={{width:'100%', borderRadius:8, marginBottom:16}} />
-              <h3 style={{marginBottom:8}}>{quickViewProduct.name}</h3>
-              <div style={{marginBottom:8}}><b>Price:</b> ₹{quickViewProduct.price}</div>
-              <div style={{marginBottom:8}}><b>Platform:</b> {quickViewProduct.platform}</div>
-              <div style={{marginBottom:8}}><b>Rating:</b> {quickViewProduct.rating} ({quickViewProduct.ratingCount} reviews)</div>
-              <a href={quickViewProduct.link} target="_blank" rel="noopener noreferrer" style={{color:'#ffb300', fontWeight:700}}>View on {quickViewProduct.platform}</a>
-              {dealScores[quickViewProduct.id] !== undefined && (
-                <div style={{ margin: '24px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, color: '#e74c3c', marginRight: 8 }}>Worst</span>
-                    <div style={{
-                      flex: 1,
-                      height: 18,
-                      background: '#eee',
-                      borderRadius: 9,
-                      overflow: 'hidden',
-                      position: 'relative',
-                      margin: '0 8px'
-                    }}>
-                      <div style={{
-                        width: `${dealScores[quickViewProduct.id].score}%`,
-                        height: '100%',
-                        background: `linear-gradient(90deg, #e74c3c 0%, #ffd54f 50%, #43a047 100%)`,
-                        borderRadius: 9,
-                        transition: 'width 0.5s'
-                      }} />
-                      <span style={{
-                        position: 'absolute',
-                        left: `${dealScores[quickViewProduct.id].score}%`,
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        fontWeight: 700,
-                        color: '#222',
-                        fontSize: 14
-                      }}>
-                        {dealScores[quickViewProduct.id].score}/100
-                      </span>
-                    </div>
-                    <span style={{ fontSize: 13, color: '#43a047', marginLeft: 8 }}>Excellent</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Compare Modal */}
         {showCompareModal && (
           <div className="compare-modal-overlay" style={{
             position: 'fixed',
@@ -1035,7 +1111,6 @@ const YourPage = () => {
                 color: '#222'
               }}>Product Comparison</div>
 
-              {/* Tab Navigation */}
               <div style={{
                 display: 'flex',
                 gap: '16px',
@@ -1074,11 +1149,10 @@ const YourPage = () => {
                 >
                   📋 Comparison Table
                 </button>
-                </div>
+              </div>
 
-              {/* Graph View */}
               {activeTab === 'graph' && (
-                              <div style={{
+                <div style={{
                   height: '400px', 
                   padding: '24px',
                   background: '#f9f9f9',
@@ -1171,11 +1245,10 @@ const YourPage = () => {
                         ))}
                       </LineChart>
                     </ResponsiveContainer>
-                            </div>
-                          </div>
-                        )}
+                  </div>
+                </div>
+              )}
 
-              {/* Table View */}
               {activeTab === 'table' && (
                 <div style={{
                   flex: 1,
@@ -1188,7 +1261,6 @@ const YourPage = () => {
                     gap: '0',
                     minWidth: 600
                   }}>
-                    {/* Header Row */}
                     <div key="attribute-header" style={{
                       background: '#fffde7',
                       padding: '16px',
@@ -1199,7 +1271,7 @@ const YourPage = () => {
                       left: 0,
                       zIndex: 2
                     }}>Attribute</div>
-                      {compareProducts.map((product, index) => (
+                    {compareProducts.map((product, index) => (
                       <div key={`header-${product.id}`} style={{
                         background: '#fffde7',
                         padding: '16px',
@@ -1229,7 +1301,6 @@ const YourPage = () => {
                       </div>
                     ))}
 
-                    {/* Deal Meter Row */}
                     <div key="deal-meter-header" style={{
                       background: '#fffde7',
                       padding: '16px',
@@ -1237,26 +1308,26 @@ const YourPage = () => {
                       color: '#bfa600',
                       borderRight: '1.5px solid #ffd54f'
                     }}>🔥 Deal Meter</div>
-                      {compareProducts.map((p, idx) => {
-                        let dealScore = 0;
-                        if (p.originalPrice && p.price && p.originalPrice > p.price) {
-                          dealScore = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
-                        }
-                        let color = dealScore > 50 ? '#43a047' : dealScore > 20 ? '#ffa000' : '#e53935';
-                        return (
+                    {compareProducts.map((p, idx) => {
+                      let dealScore = 0;
+                      if (p.originalPrice && p.price && p.originalPrice > p.price) {
+                        dealScore = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
+                      }
+                      let color = dealScore > 50 ? '#43a047' : dealScore > 20 ? '#ffa000' : '#e53935';
+                      return (
                         <div key={`deal-meter-${p.id}`} style={{
                           padding: '16px',
                           textAlign: 'center',
                           background: '#fff',
                           borderBottom: '1px solid #f3e99c'
-                              }}>
-                                <div style={{
+                        }}>
+                          <div style={{
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             gap: 8
                           }}>
-                                <div style={{
+                            <div style={{
                               width: 120,
                               height: 12,
                               background: '#f3f3f3',
@@ -1271,18 +1342,17 @@ const YourPage = () => {
                                 borderRadius: 6,
                                 transition: 'width 0.3s'
                               }}></div>
-                                </div>
+                            </div>
                             <span style={{
                               fontWeight: 700,
                               color,
                               fontSize: 15
                             }}>{dealScore > 0 ? `${dealScore}/100` : 'No Deal'}</span>
-                              </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      );
+                    })}
 
-                    {/* Attribute Rows */}
                     {[
                       { key: 'price', label: <span>Price</span>, get: p => p.price ? `₹${p.price}` : '—', icon: '💰' },
                       { key: 'originalPrice', label: <span>Original Price</span>, get: p => p.originalPrice ? `₹${p.originalPrice}` : '—', icon: '🏷️' },
@@ -1349,7 +1419,13 @@ YourPage.propTypes = {
       platform: PropTypes.string,
       link: PropTypes.string,
       preferredAmount: PropTypes.number,
-      dateAdded: PropTypes.number
+      dateAdded: PropTypes.number,
+      priceHistory: PropTypes.arrayOf(
+        PropTypes.shape({
+          date: PropTypes.string,
+          price: PropTypes.number
+        })
+      )
     })
   )
 };

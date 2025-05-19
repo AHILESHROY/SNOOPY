@@ -6,7 +6,7 @@ const API_BASE_URL = 'http://13.203.223.3:8000';
 const API_TIMEOUT = 5000; // 5 seconds timeout
 
 const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(product.preferredAmount ? product.preferredAmount.toString() : '');
   const [maxAmount, setMaxAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -14,7 +14,6 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
   const isEmailMissing = !userEmail || userEmail.trim() === '';
 
   useEffect(() => {
-    // Set max amount to original price
     setMaxAmount(product.originalPrice);
   }, [product.originalPrice]);
 
@@ -56,11 +55,12 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
 
       try {
         await retryOperation(async () => {
-          console.log('Sending request with payload:', {
+          const payload = {
             email: userEmail,
             u_id: product.uid || product.id,
             price: numAmount
-          });
+          };
+          console.log('PreferredAmountPopup: Sending request with payload:', payload);
 
           const response = await fetchWithTimeout(`${API_BASE_URL}/add_to_list`, {
             method: 'POST',
@@ -68,15 +68,11 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
               'Content-Type': 'application/json',
               'Accept': 'application/json'
             },
-            body: JSON.stringify({
-              email: userEmail,
-              u_id: product.uid || product.id,
-              price: numAmount
-            })
+            body: JSON.stringify(payload)
           });
 
           const responseText = await response.text();
-          console.log('Raw API Response:', responseText);
+          console.log('PreferredAmountPopup: Raw API Response:', responseText);
 
           if (!response.ok) {
             let errorMessage = 'Failed to save preferred amount';
@@ -84,7 +80,7 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
               const errorData = JSON.parse(responseText);
               errorMessage = errorData.detail || errorData.message || errorMessage;
             } catch (e) {
-              console.error('Error parsing error response:', e);
+              console.error('PreferredAmountPopup: Error parsing error response:', e);
             }
             throw new Error(errorMessage);
           }
@@ -92,17 +88,19 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
           try {
             const data = JSON.parse(responseText);
             if (data.message) {
-              console.log('Success:', data.message);
+              console.log('PreferredAmountPopup: Success:', data.message);
             }
           } catch (e) {
-            console.error('Error parsing success response:', e);
+            console.error('PreferredAmountPopup: Error parsing success response:', e);
           }
         });
 
+        console.log('PreferredAmountPopup: Calling onConfirm with amount:', amount);
         onConfirm(amount);
+        console.log('PreferredAmountPopup: Closing popup');
         onClose();
       } catch (error) {
-        console.error('Failed to save preferred amount:', error);
+        console.error('PreferredAmountPopup: Failed to save preferred amount:', error);
         const errorMessage = typeof error === 'object' && error.message 
           ? error.message 
           : 'Failed to save preferred amount. Please try again.';
@@ -110,6 +108,8 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
       } finally {
         setIsLoading(false);
       }
+    } else {
+      setError(`Amount must be between 0 and ₹${maxAmount}`);
     }
   };
 
@@ -183,9 +183,10 @@ PreferredAmountPopup.propTypes = {
     name: PropTypes.string.isRequired,
     price: PropTypes.number.isRequired,
     originalPrice: PropTypes.number.isRequired,
-    uid: PropTypes.string.isRequired
+    uid: PropTypes.string,
+    preferredAmount: PropTypes.number
   }).isRequired,
   userEmail: PropTypes.string.isRequired
 };
 
-export default PreferredAmountPopup;  
+export default PreferredAmountPopup;

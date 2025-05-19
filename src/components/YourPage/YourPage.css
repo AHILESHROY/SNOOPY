@@ -721,3 +721,101 @@ body, .yp-yourpage-container, .yp-yourpage-content {
   letter-spacing: 0.5px;
   padding: 8px 0;
 }
+
+/* Quick View Modal */
+.yp-quick-view-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yp-quick-view-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  position: relative;
+}
+
+.yp-quick-view-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #666;
+}
+
+.yp-quick-view-close:hover {
+  color: #222;
+}
+
+.yp-quick-view-image {
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+.yp-quick-view-title {
+  margin-bottom: 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #222;
+}
+
+.yp-quick-view-details {
+  margin-bottom: 16px;
+}
+
+.yp-quick-view-details p {
+  margin: 4px 0;
+  font-size: 15px;
+  color: #333;
+}
+
+.yp-quick-view-link {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: #ffd54f;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  color: #222;
+  transition: background 0.2s;
+}
+
+.yp-quick-view-link:hover {
+  background: #ffca28;
+}
+
+.yp-quick-view-deal-score {
+  margin-top: 16px;
+  padding: 12px;
+  background: #fffde7;
+  border-radius: 8px;
+}
+
+.yp-quick-view-deal-score p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.yp-quick-view-deal-score p:first-child {
+  font-weight: 600;
+  color: #bfa600;
+}

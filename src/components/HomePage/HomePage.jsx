@@ -7,11 +7,17 @@ import ProductDetails from "../ProductDetails/ProductDetails";
 import WishlistPopup from "../WishlistPopup/WishlistPopup";
 import PreferredAmountPopup from "../PreferredAmountPopup/PreferredAmountPopup";
 import PropTypes from "prop-types";
-import { FaBalanceScale, FaHeart, FaPlus } from 'react-icons/fa';
-import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import AddProductPopup from '../AddProductPopup/AddProductPopup';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { FaBalanceScale, FaPlus } from 'react-icons/fa';
+import {
+  ResponsiveContainer,
+  LineChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  Legend as RechartsLegend,
+  Line as RechartsLine
+} from 'recharts';
 
 const API_BASE_URL = 'http://13.203.223.3:8000';
 
@@ -22,30 +28,10 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [wishlist, setWishlist] = useState(() => {
-    try {
-      const saved = localStorage.getItem('wishlist');
-      if (!saved) return [];
-
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-
-      return parsed.filter(item =>
-        item &&
-        typeof item === 'object' &&
-        'id' in item &&
-        'name' in item &&
-        'image' in item
-      );
-    } catch (error) {
-      console.error('Error loading wishlist from localStorage:', error);
-      return [];
-    }
-  });
-
+  const [wishlist, setWishlist] = useState([]);
   const [showWishlistPopup, setShowWishlistPopup] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [userEmail, setUserEmail] = useState(() => {
+  const [userEmail] = useState(() => {
     return localStorage.getItem('userEmail') || '';
   });
   const [showPreferredAmountPopup, setShowPreferredAmountPopup] = useState(false);
@@ -53,31 +39,108 @@ const HomePage = () => {
   const [compareMode, setCompareMode] = useState(false);
   const [compareProducts, setCompareProducts] = useState([]);
   const [showCompareModal, setShowCompareModal] = useState(false);
-  const [showAddProductPopup, setShowAddProductPopup] = useState(false);
-  const [activeTab, setActiveTab] = useState('graph');
-  const navigate = useNavigate();
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [productLink, setProductLink] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem('wishlist', JSON.stringify(wishlist));
-  }, [wishlist]);
+  const platformOptions = [
+    { label: 'Amazon', value: 'amazon' },
+    { label: 'Flipkart', value: 'flipkart' },
+    { label: 'Snapdeal', value: 'snapdeal' },
+    { label: 'Target', value: 'target' },
+  ];
+  const [selectedPlatform, setSelectedPlatform] = useState(platformOptions[0].value);
 
-  // Handle body overflow when modals are open
-  useEffect(() => {
-    if (selectedProduct || showWishlistPopup || showPreferredAmountPopup || showCompareModal || showAddProductPopup) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
+  const fetchWishlist = async () => {
+    if (!userEmail) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/get_tracked_objects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ email: userEmail })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data?.user_budgets?.[0]) {
+        const trackedObjects = data.user_budgets[0];
+        const wishlistItems = trackedObjects.u_id.map((id, index) => ({
+          id,
+          name: trackedObjects.product_name?.[index] || 'Unknown Product',
+          image: trackedObjects.image_url?.[index] || '',
+          price: trackedObjects.product_price?.[index] || 0,
+          platform: trackedObjects.platform?.[index] || 'Unknown',
+          preferredAmount: trackedObjects.preferred_amount?.[index] || null,
+          dateAdded: trackedObjects.date_added?.[index] || Date.now(),
+          link: trackedObjects.link?.[index] || '',
+          originalPrice: trackedObjects.original_price?.[index] || 0,
+          rating: trackedObjects.ratings?.[index] || 0,
+          ratingCount: trackedObjects.number_of_ratings?.[index] || 0,
+          discountRate: trackedObjects.discount_rate?.[index] || "0%"
+        }));
+
+        const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          if (productsData?.data) {
+            const productsMap = new Map(productsData.data.map(p => [p.u_id, p]));
+            
+            const updatedWishlistItems = wishlistItems.map(item => {
+              const completeProduct = productsMap.get(item.id);
+              if (completeProduct) {
+                return {
+                  ...item,
+                  name: completeProduct.product_name || item.name,
+                  image: completeProduct.image_url || item.image,
+                  price: completeProduct.price || item.price,
+                  platform: completeProduct.platform || item.platform,
+                  link: completeProduct.link || item.link,
+                  originalPrice: completeProduct.original_price || item.originalPrice,
+                  rating: completeProduct.ratings || item.rating,
+                  ratingCount: completeProduct.number_of_ratings || item.ratingCount,
+                  discountRate: completeProduct.discount_rate || item.discountRate
+                };
+              }
+              return item;
+            });
+            
+            setWishlist(updatedWishlistItems);
+          } else {
+            setWishlist(wishlistItems);
+          }
+        } else {
+          setWishlist(wishlistItems);
+        }
+      } else {
+        setWishlist([]);
+      }
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
     }
-    return () => {
-      document.body.style.overflow = 'auto';
-    };
-  }, [selectedProduct, showWishlistPopup, showPreferredAmountPopup, showCompareModal, showAddProductPopup]);
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        console.log("FETCHING PRODUCTS...");
+        console.log('Fetching products...');
 
         const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
           method: 'GET',
@@ -85,7 +148,7 @@ const HomePage = () => {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            'Access-Control-Allow-Origin':'*'
+            'Access-Control-Allow-Origin': '*'
           },
           mode: 'cors'
         });
@@ -95,21 +158,21 @@ const HomePage = () => {
         }
 
         const productsData = await productsResponse.json();
-        console.log("PRODUCTS DATA RECEIVED:",productsData);
+        console.log('Products data received:', productsData);
 
         if (!productsData.data || !Array.isArray(productsData.data)) {
-          console.error('Invalid products data format:',productsData); 
+          console.error('Invalid products data format:', productsData);
           throw new Error('Invalid data format received from server');
         }
-        console.log("FETCHING PROCESS...");
+
+        console.log('Fetching prices...');
         const pricesResponse = await fetch(`${API_BASE_URL}/prices`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin':'*'
-            
-          },  
+            'Access-Control-Allow-Origin': '*'
+          },
           mode: 'cors'
         });
 
@@ -118,6 +181,7 @@ const HomePage = () => {
         }
 
         const pricesData = await pricesResponse.json();
+        console.log('Prices data received:', pricesData);
         const priceHistoryMap = new Map();
 
         if (pricesData.data && Array.isArray(pricesData.data)) {
@@ -132,6 +196,7 @@ const HomePage = () => {
           });
         }
 
+        console.log('Transforming products...');
         const transformedProducts = productsData.data.map(product => ({
           id: product.u_id,
           name: product.product_name,
@@ -146,15 +211,21 @@ const HomePage = () => {
           priceHistory: priceHistoryMap.get(product.u_id) || generatePriceHistory(product)
         }));
 
+        console.log('Transformed products:', transformedProducts);
         setProducts(transformedProducts);
 
         const randomProducts = [...transformedProducts]
           .sort(() => 0.5 - Math.random())
           .slice(0, 20);
+        console.log('Random products selected:', randomProducts);
         setDisplayedProducts(randomProducts);
         setError(null);
       } catch (error) {
         console.error("Error fetching products:", error);
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack
+        });
         setError(`Error: ${error.message}. Please check your internet connection and try again.`);
         setProducts([]);
         setDisplayedProducts([]);
@@ -166,50 +237,10 @@ const HomePage = () => {
     fetchProducts();
   }, []);
 
-  // Fetch tracked objects from backend
   useEffect(() => {
-    const fetchTrackedObjects = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.post('http://13.203.223.3:8000/get_tracked_objects', {
-          email: userEmail
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.data && Array.isArray(response.data.user_budgets)) {
-          // Transform the backend data to match our frontend structure
-          const transformedProducts = response.data.user_budgets.map(item => ({
-            id: item.id || item._id,
-            name: item.name || item.product_name,
-            price: item.current_price,
-            originalPrice: item.original_price,
-            discountRate: item.discount_rate,
-            image: item.image_url,
-            platform: item.platform,
-            rating: item.rating,
-            ratingCount: item.rating_count,
-            priceHistory: item.price_history || [],
-            url: item.product_url,
-            preferredAmount: item.preferred_amount || null
-          }));
-          
-          setProducts(transformedProducts);
-          setDisplayedProducts(transformedProducts);
-        }
-      } catch (err) {
-        console.error('Error fetching tracked objects:', err);
-        setError('Failed to load wishlist items. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (userEmail) {
-      fetchTrackedObjects();
-    }
+    fetchWishlist();
+    const pollInterval = setInterval(fetchWishlist, 5000);
+    return () => clearInterval(pollInterval);
   }, [userEmail]);
 
   const handleSearchChange = (e) => {
@@ -240,25 +271,92 @@ const HomePage = () => {
     }
   };
 
-  const handleWishlistToggle = (product) => {
+  const handleWishlistToggle = async (product) => {
     const isInWishlist = wishlist.some(p => p.id === product.id);
     if (isInWishlist) {
-      setWishlist(prev => prev.filter(p => p.id !== product.id));
+      try {
+        const response = await fetch(`${API_BASE_URL}/remove_from_list`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            u_id: product.id
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        await fetchWishlist();
+      } catch (error) {
+        console.error('Error removing from wishlist:', error);
+      }
     } else {
       setSelectedProductForAmount(product);
       setShowPreferredAmountPopup(true);
     }
   };
 
-  const handlePreferredAmountConfirm = (amount) => {
-    if (selectedProductForAmount) {
-      const productWithAmount = { ...selectedProductForAmount, preferredAmount: amount };
-      setWishlist(prev => [...prev, productWithAmount]);
-    }
+  const handleEditPreferredAmount = (product) => {
+    setSelectedProductForAmount(product);
+    setShowPreferredAmountPopup(true);
   };
 
-  const handleRemoveFromWishlist = (product) => {
-    setWishlist(prev => prev.filter(p => p.id !== product.id));
+  const handlePreferredAmountConfirm = async (amount) => {
+    if (selectedProductForAmount) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/add_to_list`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            u_id: selectedProductForAmount.id,
+            price: amount
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        await fetchWishlist();
+      } catch (error) {
+        console.error('Error adding to wishlist:', error);
+      }
+    }
+    setShowPreferredAmountPopup(false);
+    setSelectedProductForAmount(null);
+  };
+
+  const handleRemoveFromWishlist = async (product) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/remove_from_list`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          u_id: product.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      await fetchWishlist();
+    } catch (error) {
+      console.error('Error removing from wishlist:', error);
+    }
   };
 
   const handleViewProduct = (product) => {
@@ -287,8 +385,7 @@ const HomePage = () => {
 
   const closeCompareModal = () => {
     setShowCompareModal(false);
-    setCompareProducts([]);
-    setCompareMode(false);
+    setCompareProducts([]); // Reset compare products on close
   };
 
   const filteredProducts = searchQuery
@@ -297,18 +394,12 @@ const HomePage = () => {
     )
     : displayedProducts;
 
-  // Prepare synchronized price history data
-  const getSynchronizedPriceData = () => {
+  const getMergedPriceHistory = () => {
     if (compareProducts.length !== 2) return [];
-
-    // Get all unique dates
     const allDates = Array.from(new Set(
-      compareProducts.flatMap(p => 
-        p.priceHistory.map(h => h.date)
-      )
+      compareProducts.flatMap(p => p.priceHistory.map(h => h.date))
     )).sort((a, b) => new Date(a) - new Date(b));
 
-    // Create synchronized data points
     return allDates.map(date => {
       const dataPoint = { date };
       compareProducts.forEach((product, index) => {
@@ -319,110 +410,55 @@ const HomePage = () => {
     });
   };
 
-  // Add loading state UI
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        background: '#f5f5f5'
-      }}>
-        <div style={{
-          textAlign: 'center',
-          padding: '32px',
-          background: '#fff',
-          borderRadius: '16px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid #ffd54f',
-            borderTop: '4px solid transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px'
-          }}></div>
-          <div style={{
-            fontSize: '18px',
-            fontWeight: 600,
-            color: '#333'
-          }}>Loading amazing products for you...</div>
-        </div>
-      </div>
-    );
-  }
+  const handleLinkSubmit = async (e) => {
+    e.preventDefault();
+    setLinkError('');
+    setIsSubmitting(true);
 
-  // Add error state UI
-  if (error) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        background: '#f5f5f5'
-      }}>
-        <div style={{
-          textAlign: 'center',
-          padding: '32px',
-          background: '#fff',
-          borderRadius: '16px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          maxWidth: '400px'
-        }}>
-          <div style={{
-            fontSize: '24px',
-            color: '#e53935',
-            marginBottom: '16px'
-          }}>⚠️</div>
-          <div style={{
-            fontSize: '18px',
-            fontWeight: 600,
-            color: '#333',
-            marginBottom: '16px'
-          }}>{error}</div>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              padding: '12px 24px',
-              background: '#ffd54f',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
+    try {
+      const response = await fetch(`${API_BASE_URL}/add_product_link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          product_link: productLink,
+          platform: selectedPlatform
+        })
+      });
 
-  // Add keyframes for loading animation
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      if (!response.ok) {
+        throw new Error('Failed to submit product link');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setShowLinkModal(false);
+        setProductLink('');
+        window.location.reload();
+      } else {
+        setLinkError(data.message || 'Failed to submit product link');
+      }
+    } catch (error) {
+      setLinkError('Error submitting link. Please try again.');
+      console.error('Error submitting link:', error);
+    } finally {
+      setIsSubmitting(false);
     }
-  `;
-  document.head.appendChild(style);
+  };
+
+  const [activeTab, setActiveTab] = useState('table'); // For comparison modal tabs
 
   return (
     <div className="homepage-container">
       <Navbar />
-
       <div className="header-container">
         <div className="welcome-section">
           <h1>Welcome to Snoopy!</h1>
           <p>DISCOVER AMAZING PRODUCTS AT UNBELIEVABLE PRICES.</p>
         </div>
-
         <form onSubmit={handleSearchSubmit} className="search-form">
           <SearchBar
             value={searchQuery}
@@ -430,35 +466,38 @@ const HomePage = () => {
             products={products}
           />
         </form>
-
         <div className="header-controls">
-          <button 
-            className="header-button add-product-button"
-            onClick={() => setShowAddProductPopup(true)}
-            title="Add Product"
-          >
-            <FaPlus />
-          </button>
-          <button 
+          <button
             className="header-button wishlist-button"
-          onClick={() => setShowWishlistPopup(true)}
-            title="Wishlist"
-        >
-            <FaHeart />
+            onClick={() => setShowWishlistPopup(true)}
+            title="View Wishlist"
+          >
+            <span role="img" aria-label="wishlist">
+              {wishlist.length > 0 ? '❤️' : '🤍'}
+            </span>
+            {wishlist.length > 0 && (
+              <span className="wishlist-count">{wishlist.length}</span>
+            )}
           </button>
           <button
             className={`header-button compare-button ${compareMode ? 'active' : ''}`}
-          onClick={() => {
-            setCompareMode(prev => !prev);
-            setCompareProducts([]);
-          }}
-          title={compareMode ? "Exit Compare Mode" : "Enter Compare Mode"}
-        >
-          <FaBalanceScale />
+            onClick={() => {
+              setCompareMode((prev) => !prev);
+              setCompareProducts([]);
+            }}
+            title={compareMode ? 'Disable Compare Mode' : 'Enable Compare Mode'}
+          >
+            <FaBalanceScale />
+          </button>
+          <button
+            className="header-button add-product-button"
+            onClick={() => setShowLinkModal(true)}
+            title="Add Product Link"
+          >
+            <FaPlus />
           </button>
         </div>
       </div>
-
       <div className="content">
         {error && (
           <div className="error-message">
@@ -472,36 +511,46 @@ const HomePage = () => {
             </button>
           </div>
         )}
-
         {loading ? (
           <div className="loading">Loading amazing products for you...</div>
         ) : (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
-              {compareMode && (
-                <span style={{ color: '#888', fontSize: 14 }}>
-                  Select up to 2 products to compare
-                </span>
-              )}
-            </div>
+            {compareMode && (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 16, 
+                marginBottom: 18, 
+                padding: '8px 16px',
+                background: '#fffde7',
+                borderRadius: '8px',
+                color: '#bfa600',
+                fontSize: 14
+              }}>
+                <FaBalanceScale style={{ fontSize: 16 }} />
+                <span>Select up to 2 products to compare</span>
+              </div>
+            )}
             <div className="products-grid">
-              {filteredProducts.map((product) => (
-                <div key={product.id} className="product-card-with-heart">
-                  <ProductCard
-                    key={`product-${product.id}`}
-                    product={product}
-                    onViewClick={handleViewProduct}
-                    onWishlistToggle={handleWishlistToggle}
-                    isInWishlist={wishlist.some(p => p.id === product.id)}
-                    isFromHomepage={true}
-                    showCompareIcon={compareMode}
-                    isCompared={compareProducts.some(p => p.id === product.id)}
-                    onCompareClick={() => handleCompareToggle(product)}
-                  />
-                </div>
-              ))}
+              {filteredProducts.map((product) => {
+                const isInWishlist = wishlist.some(p => p.id === product.id);
+                const wishlistItem = wishlist.find(item => item.id === product.id);
+                return (
+                  <div key={product.id} className="product-card-with-heart">
+                    <ProductCard
+                      product={product}
+                      onViewClick={handleViewProduct}
+                      onWishlistToggle={handleWishlistToggle}
+                      isInWishlist={isInWishlist}
+                      isFromHomepage={true}
+                      showCompareIcon={compareMode}
+                      isCompared={compareProducts.some(p => p.id === product.id)}
+                      onCompareClick={() => handleCompareToggle(product)}
+                    />
+                  </div>
+                );
+              })}
             </div>
-
             {displayedProducts.length < products.length && !searchQuery && (
               <div className="load-more-container">
                 <button
@@ -513,7 +562,6 @@ const HomePage = () => {
                 </button>
               </div>
             )}
-
             {showCompareModal && (
               <div className="compare-modal-overlay" style={{
                 position: 'fixed',
@@ -567,7 +615,6 @@ const HomePage = () => {
                     color: '#222'
                   }}>Product Comparison</div>
 
-                  {/* Tab Navigation */}
                   <div style={{
                     display: 'flex',
                     gap: '16px',
@@ -608,9 +655,8 @@ const HomePage = () => {
                     </button>
                   </div>
 
-                  {/* Graph View */}
                   {activeTab === 'graph' && (
-                    <div style={{ 
+                    <div style={{
                       height: '400px', 
                       padding: '24px',
                       background: '#f9f9f9',
@@ -620,7 +666,7 @@ const HomePage = () => {
                       <div style={{ height: '320px' }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart
-                            data={getSynchronizedPriceData()}
+                            data={getMergedPriceHistory()}
                             margin={{ top: 10, right: 30, left: 30, bottom: 30 }}
                           >
                             <CartesianGrid 
@@ -642,13 +688,13 @@ const HomePage = () => {
                               tick={{ fontSize: 12, fill: '#666' }}
                               domain={[
                                 (dataMin) => {
-                                  const allPrices = getSynchronizedPriceData().flatMap(d => 
+                                  const allPrices = getMergedPriceHistory().flatMap(d => 
                                     [d.price0, d.price1].filter(p => p !== null)
                                   );
                                   return Math.floor(Math.min(...allPrices) * 0.9);
                                 },
                                 (dataMax) => {
-                                  const allPrices = getSynchronizedPriceData().flatMap(d => 
+                                  const allPrices = getMergedPriceHistory().flatMap(d => 
                                     [d.price0, d.price1].filter(p => p !== null)
                                   );
                                   return Math.ceil(Math.max(...allPrices) * 1.1);
@@ -660,7 +706,7 @@ const HomePage = () => {
                               axisLine={{ stroke: '#666' }}
                               tickLine={{ stroke: '#666' }}
                             />
-                            <Tooltip 
+                            <RechartsTooltip 
                               formatter={(value) => [`₹${value}`, 'Price']}
                               labelFormatter={(label) => `Date: ${label}`}
                               contentStyle={{
@@ -671,7 +717,7 @@ const HomePage = () => {
                                 padding: '8px 12px'
                               }}
                             />
-                            <Legend 
+                            <RechartsLegend 
                               wrapperStyle={{
                                 paddingTop: '20px',
                                 fontSize: '14px',
@@ -681,8 +727,9 @@ const HomePage = () => {
                               align="center"
                             />
                             {compareProducts.map((product, index) => (
-                              <Line
+                              <RechartsLine
                                 key={`line-${product.id}`}
+                                type="monotone"
                                 dataKey={`price${index}`}
                                 name={`${product.name} (${product.platform})`}
                                 stroke={index === 0 ? '#27ae60' : '#e74c3c'}
@@ -707,7 +754,6 @@ const HomePage = () => {
                     </div>
                   )}
 
-                  {/* Table View */}
                   {activeTab === 'table' && (
                     <div style={{
                       flex: 1,
@@ -720,7 +766,6 @@ const HomePage = () => {
                         gap: '0',
                         minWidth: 600
                       }}>
-                        {/* Header Row */}
                         <div key="attribute-header" style={{
                           background: '#fffde7',
                           padding: '16px',
@@ -731,7 +776,7 @@ const HomePage = () => {
                           left: 0,
                           zIndex: 2
                         }}>Attribute</div>
-                          {compareProducts.map((product, index) => (
+                        {compareProducts.map((product, index) => (
                           <div key={`header-${product.id}`} style={{
                             background: '#fffde7',
                             padding: '16px',
@@ -759,9 +804,8 @@ const HomePage = () => {
                               color: '#666'
                             }}>{product.platform}</div>
                           </div>
-                          ))}
+                        ))}
 
-                        {/* Deal Meter Row */}
                         <div key="deal-meter-header" style={{
                           background: '#fffde7',
                           padding: '16px',
@@ -769,13 +813,13 @@ const HomePage = () => {
                           color: '#bfa600',
                           borderRight: '1.5px solid #ffd54f'
                         }}>🔥 Deal Meter</div>
-                          {compareProducts.map((p, idx) => {
-                            let dealScore = 0;
-                            if (p.originalPrice && p.price && p.originalPrice > p.price) {
-                              dealScore = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
-                            }
-                            let color = dealScore > 50 ? '#43a047' : dealScore > 20 ? '#ffa000' : '#e53935';
-                            return (
+                        {compareProducts.map((p, idx) => {
+                          let dealScore = 0;
+                          if (p.originalPrice && p.price && p.originalPrice > p.price) {
+                            dealScore = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
+                          }
+                          let color = dealScore > 50 ? '#43a047' : dealScore > 20 ? '#ffa000' : '#e53935';
+                          return (
                             <div key={`deal-meter-${p.id}`} style={{
                               padding: '16px',
                               textAlign: 'center',
@@ -811,15 +855,18 @@ const HomePage = () => {
                                 }}>{dealScore > 0 ? `${dealScore}/100` : 'No Deal'}</span>
                               </div>
                             </div>
-                            );
-                          })}
+                          );
+                        })}
 
-                        {/* Attribute Rows */}
                         {[
                           { key: 'price', label: <span>Price</span>, get: p => p.price ? `₹${p.price}` : '—', icon: '💰' },
                           { key: 'originalPrice', label: <span>Original Price</span>, get: p => p.originalPrice ? `₹${p.originalPrice}` : '—', icon: '🏷️' },
                           { key: 'discount', label: <span>Discount</span>, get: p => p.discountRate || '—', icon: '🔖' },
+                          { key: 'brand', label: <span>Brand</span>, get: p => p.brand || '—', icon: '🏢' },
+                          { key: 'specs', label: <span>Specifications</span>, get: p => p.specs || '—', icon: '📋' },
+                          { key: 'availability', label: <span>Availability</span>, get: p => p.availability || '—', icon: '🚚' },
                           { key: 'rating', label: <span>Rating</span>, get: p => p.rating ? `${p.rating} (${p.ratingCount} reviews)` : '—', icon: '⭐' },
+                          { key: 'offers', label: <span>Offers</span>, get: p => p.offers || '—', icon: '🎁' },
                         ].map(attr => {
                           const values = compareProducts.map(p => attr.get(p));
                           const isDiff = values.length === 2 && values[0] !== values[1];
@@ -854,39 +901,12 @@ const HomePage = () => {
           </>
         )}
       </div>
-
       {selectedProduct && (
-        <div className="product-details-overlay" style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflowY: 'auto'
-        }}>
-          <div style={{
-            width: '90vw',
-            maxWidth: '800px',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            background: '#fff',
-            borderRadius: '12px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-            position: 'relative'
-          }}>
         <ProductDetails
           product={selectedProduct}
           onClose={handleCloseProductDetails}
         />
-          </div>
-        </div>
       )}
-
       {showWishlistPopup && (
         <WishlistPopup
           wishlist={wishlist}
@@ -896,7 +916,6 @@ const HomePage = () => {
           userEmail={userEmail}
         />
       )}
-
       {showPreferredAmountPopup && selectedProductForAmount && (
         <PreferredAmountPopup
           product={selectedProductForAmount}
@@ -908,9 +927,140 @@ const HomePage = () => {
           userEmail={userEmail}
         />
       )}
-
-      {showAddProductPopup && (
-        <AddProductPopup onClose={() => setShowAddProductPopup(false)} />
+      {showLinkModal && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          zIndex: 9998,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }} onClick={() => setShowLinkModal(false)}>
+          <div style={{
+            background: '#1a1a1a',
+            borderRadius: 20,
+            padding: '32px',
+            width: '90%',
+            maxWidth: 500,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            position: 'relative',
+            color: '#fff'
+          }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setShowLinkModal(false)} style={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              background: 'transparent',
+              border: 'none',
+              color: '#888',
+              fontSize: 24,
+              cursor: 'pointer'
+            }}>×</button>
+            
+            <h2 style={{
+              marginBottom: 24,
+              color: '#ffd54f',
+              fontSize: 24,
+              fontWeight: 600
+            }}>Add Product Link</h2>
+            
+            <form onSubmit={handleLinkSubmit}>
+              <div style={{ marginBottom: 18 }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  color: '#888',
+                  fontSize: 14
+                }}>
+                  Select Platform
+                </label>
+                <select
+                  value={selectedPlatform}
+                  onChange={e => setSelectedPlatform(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    border: '1.5px solid #ffd54f',
+                    background: '#2a2a2a',
+                    color: '#ffd54f',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    outline: 'none',
+                    marginBottom: 8,
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    cursor: 'pointer',
+                  }}
+                  required
+                >
+                  {platformOptions.map(opt => (
+                    <option key={opt.value} value={opt.value} style={{ color: '#222', background: '#fff' }}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  color: '#888',
+                  fontSize: 14
+                }}>
+                  Paste the product link from Amazon, Flipkart, or other supported platforms
+                </label>
+                <input
+                  type="url"
+                  value={productLink}
+                  onChange={(e) => setProductLink(e.target.value)}
+                  placeholder="https://..."
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 8,
+                    border: '1px solid #444',
+                    background: '#2a2a2a',
+                    color: '#fff',
+                    fontSize: 16,
+                    outline: 'none'
+                  }}
+                  required
+                />
+                {linkError && (
+                  <p style={{
+                    color: '#ff6b6b',
+                    fontSize: 14,
+                    marginTop: 8
+                  }}>{linkError}</p>
+                )}
+              </div>
+              
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: 8,
+                  background: '#ffd54f',
+                  color: '#1a1a1a',
+                  border: 'none',
+                  fontSize: 16,
+                  fontWeight: 600,
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  opacity: isSubmitting ? 0.7 : 1,
+                  transition: 'opacity 0.2s'
+                }}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit Link'}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
