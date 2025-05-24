@@ -8,6 +8,7 @@ import WishlistPopup from "../WishlistPopup/WishlistPopup";
 import PreferredAmountPopup from "../PreferredAmountPopup/PreferredAmountPopup";
 import PropTypes from "prop-types";
 import { FaBalanceScale, FaPlus } from 'react-icons/fa';
+import { calculateHolisticDealScore, getDealLabel } from '../../utils/aiDealAnalyzer';
 import {
   ResponsiveContainer,
   LineChart,
@@ -43,6 +44,8 @@ const HomePage = () => {
   const [productLink, setProductLink] = useState('');
   const [linkError, setLinkError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dealScores, setDealScores] = useState({});
+  const [compareLoading, setCompareLoading] = useState(false);
 
   const platformOptions = [
     { label: 'Amazon', value: 'amazon' },
@@ -61,7 +64,7 @@ const HomePage = () => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
+          'Authorization': 'Bearer your-firebase-token-here'
         },
         body: JSON.stringify({ email: userEmail })
       });
@@ -71,7 +74,7 @@ const HomePage = () => {
       }
 
       const data = await response.json();
-      console.log('Fetched wishlist data:', data); // Debug log
+      console.log('Fetched wishlist data:', data);
       
       if (data?.user_budgets?.[0]) {
         const trackedObjects = data.user_budgets[0];
@@ -79,9 +82,9 @@ const HomePage = () => {
           id,
           name: trackedObjects.product_name?.[index] || 'Unknown Product',
           image: trackedObjects.image_url?.[index] || '',
-          price: trackedObjects.price?.[index] || 0, // Current price, if available
+          price: trackedObjects.price?.[index] || 0,
           platform: trackedObjects.platform?.[index] || 'Unknown',
-          preferredAmount: trackedObjects.product_price?.[index] || null, // Map preferred amount from product_price
+          preferredAmount: trackedObjects.product_price?.[index] || null,
           dateAdded: trackedObjects.date_added?.[index] || Date.now(),
           link: trackedObjects.link?.[index] || '',
           originalPrice: trackedObjects.original_price?.[index] || 0,
@@ -96,13 +99,13 @@ const HomePage = () => {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
+            'Authorization': 'Bearer your-firebase-token-here'
           }
         });
 
         if (productsResponse.ok) {
           const productsData = await productsResponse.json();
-          console.log('Fetched products data:', productsData); // Debug log
+          console.log('Fetched products data:', productsData);
           if (productsData?.data) {
             const productsMap = new Map(productsData.data.map(p => [p.u_id, p]));
             
@@ -120,14 +123,13 @@ const HomePage = () => {
                   rating: completeProduct.ratings || item.rating,
                   ratingCount: completeProduct.number_of_ratings || item.ratingCount,
                   discountRate: completeProduct.discount_rate || item.discountRate
-                  // Note: Do NOT override preferredAmount here; keep the value from trackedObjects
                 };
               }
               return item;
             });
             
             setWishlist(updatedWishlistItems);
-            console.log('Updated wishlist:', updatedWishlistItems); // Debug log
+            console.log('Updated wishlist:', updatedWishlistItems);
           } else {
             setWishlist(wishlistItems);
           }
@@ -155,7 +157,7 @@ const HomePage = () => {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
             'Access-Control-Allow-Origin': '*',
-            'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
+            'Authorization': 'Bearer your-firebase-token-here'
           },
           mode: 'cors'
         });
@@ -179,7 +181,7 @@ const HomePage = () => {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
-            'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
+            'Authorization': 'Bearer your-firebase-token-here'
           },
           mode: 'cors'
         });
@@ -216,7 +218,8 @@ const HomePage = () => {
           discountRate: product.discount_rate || "0%",
           platform: product.platform,
           link: product.link,
-          priceHistory: priceHistoryMap.get(product.u_id) || generatePriceHistory(product)
+          priceHistory: priceHistoryMap.get(product.u_id) || generatePriceHistory(product),
+          competitorPrices: [] // Add mock competitor prices if needed
         }));
 
         console.log('Transformed products:', transformedProducts);
@@ -288,7 +291,7 @@ const HomePage = () => {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
+            'Authorization': 'Bearer your-firebase-token-here'
           },
           body: JSON.stringify({
             email: userEmail,
@@ -316,10 +319,9 @@ const HomePage = () => {
   };
 
   const handlePreferredAmountConfirm = async (amount) => {
-    // Remove redundant /add_to_list call since PreferredAmountPopup already handles it
     setShowPreferredAmountPopup(false);
     setSelectedProductForAmount(null);
-    await fetchWishlist(); // Refresh wishlist to reflect the new preferred amount
+    await fetchWishlist();
   };
 
   const handleRemoveFromWishlist = async (product) => {
@@ -329,7 +331,7 @@ const HomePage = () => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
+          'Authorization': 'Bearer your-firebase-token-here'
         },
         body: JSON.stringify({
           email: userEmail,
@@ -364,6 +366,8 @@ const HomePage = () => {
         const newSelection = [...prev, product];
         if (newSelection.length === 2) {
           setShowCompareModal(true);
+          setCompareLoading(true);
+          calculateDealScores(newSelection).finally(() => setCompareLoading(false));
         }
         return newSelection;
       }
@@ -371,9 +375,38 @@ const HomePage = () => {
     });
   };
 
+  const calculateDealScores = async (products) => {
+    const scores = {};
+    for (const product of products) {
+      try {
+        const dealData = await calculateHolisticDealScore({
+          ...product,
+          currentPrice: product.price,
+          originalPrice: product.originalPrice,
+          priceHistory: product.priceHistory,
+          rating: product.rating,
+          ratingCount: product.ratingCount,
+          competitorPrices: product.competitorPrices || []
+        });
+        scores[product.id] = dealData;
+      } catch (error) {
+        console.error(`Error calculating deal score for product ${product.id}:`, error);
+        scores[product.id] = { score: 0, explanation: 'Unable to calculate deal score' };
+      }
+    }
+    setDealScores(scores);
+  };
+
+  useEffect(() => {
+    if (compareProducts.length > 0) {
+      setCompareLoading(true);
+      calculateDealScores(compareProducts).finally(() => setCompareLoading(false));
+    }
+  }, [compareProducts]);
+
   const closeCompareModal = () => {
     setShowCompareModal(false);
-    setCompareProducts([]); // Reset compare products on close
+    setCompareProducts([]);
   };
 
   const filteredProducts = searchQuery
@@ -415,7 +448,7 @@ const HomePage = () => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
+          'Authorization': 'Bearer your-firebase-token-here'
         },
         body: JSON.stringify(payload)
       });
@@ -448,7 +481,7 @@ const HomePage = () => {
     }
   };
 
-  const [activeTab, setActiveTab] = useState('table'); // For comparison modal tabs
+  const [activeTab, setActiveTab] = useState('table');
 
   return (
     <div className="homepage-container">
@@ -533,7 +566,6 @@ const HomePage = () => {
             <div className="products-grid">
               {filteredProducts.map((product) => {
                 const isInWishlist = wishlist.some(p => p.id === product.id);
-                const wishlistItem = wishlist.find(item => item.id === product.id);
                 return (
                   <div key={product.id} className="product-card-with-heart">
                     <ProductCard
@@ -813,45 +845,22 @@ const HomePage = () => {
                           borderRight: '1.5px solid #ffd54f'
                         }}>🔥 Deal Meter</div>
                         {compareProducts.map((p, idx) => {
-                          let dealScore = 0;
-                          if (p.originalPrice && p.price && p.originalPrice > p.price) {
-                            dealScore = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
-                          }
-                          let color = dealScore > 50 ? '#43a047' : dealScore > 20 ? '#ffa000' : '#e53935';
+                          const dealScore = dealScores[p.id]?.score || 0;
+                          console.log(`Product ${p.id} deal score:`, dealScore);
+                          const dealLabel = getDealLabel(dealScore);
+                          let color = dealScore >= 80 ? '#43a047' : dealScore >= 60 ? '#ffa000' : '#e53935';
                           return (
                             <div key={`deal-meter-${p.id}`} style={{
                               padding: '16px',
                               textAlign: 'center',
                               background: '#fff',
-                              borderBottom: '1px solid #f3e99c'
+                              borderBottom: '1.5px solid #f3e99c'
                             }}>
-                              <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: 8
-                              }}>
-                                <div style={{
-                                  width: 120,
-                                  height: 12,
-                                  background: '#f3f3f3',
-                                  borderRadius: 6,
-                                  overflow: 'hidden',
-                                  marginBottom: 4
-                                }}>
-                                  <div style={{
-                                    width: `${dealScore}%`,
-                                    height: '100%',
-                                    background: color,
-                                    borderRadius: 6,
-                                    transition: 'width 0.3s'
-                                  }}></div>
-                                </div>
-                                <span style={{
-                                  fontWeight: 700,
-                                  color,
-                                  fontSize: 15
-                                }}>{dealScore > 0 ? `${dealScore}/100` : 'No Deal'}</span>
+                              <div style={{ fontSize: '1.2em', fontWeight: 'bold', color }}>
+                                {dealScore}%
+                              </div>
+                              <div style={{ fontSize: '0.9em', color: '#666' }}>
+                                {dealLabel}
                               </div>
                             </div>
                           );
@@ -861,11 +870,7 @@ const HomePage = () => {
                           { key: 'price', label: <span>Price</span>, get: p => p.price ? `₹${p.price}` : '—', icon: '💰' },
                           { key: 'originalPrice', label: <span>Original Price</span>, get: p => p.originalPrice ? `₹${p.originalPrice}` : '—', icon: '🏷️' },
                           { key: 'discount', label: <span>Discount</span>, get: p => p.discountRate || '—', icon: '🔖' },
-                          { key: 'brand', label: <span>Brand</span>, get: p => p.brand || '—', icon: '🏢' },
-                          { key: 'specs', label: <span>Specifications</span>, get: p => p.specs || '—', icon: '📋' },
-                          { key: 'availability', label: <span>Availability</span>, get: p => p.availability || '—', icon: '🚚' },
                           { key: 'rating', label: <span>Rating</span>, get: p => p.rating ? `${p.rating} (${p.ratingCount} reviews)` : '—', icon: '⭐' },
-                          { key: 'offers', label: <span>Offers</span>, get: p => p.offers || '—', icon: '🎁' },
                         ].map(attr => {
                           const values = compareProducts.map(p => attr.get(p));
                           const isDiff = values.length === 2 && values[0] !== values[1];
@@ -913,7 +918,7 @@ const HomePage = () => {
           onAmountChange={handlePreferredAmountConfirm}
           onRemove={handleRemoveFromWishlist}
           userEmail={userEmail}
-          onEditGoal={handleEditPreferredAmount} // Added onEditGoal prop
+          onEditGoal={handleEditPreferredAmount}
         />
       )}
       {showPreferredAmountPopup && selectedProductForAmount && (

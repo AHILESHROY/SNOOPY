@@ -45,7 +45,7 @@ const ProductDetails = ({ product, onClose }) => {
       document.body.style.overflow = 'auto';
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [product, onClose]);
+  }, [product]);
 
   const handleCloseModal = () => {
     setShowModal(false);
@@ -105,9 +105,6 @@ const ProductDetails = ({ product, onClose }) => {
                       {product.originalPrice && (
                         <div className="original-price">₹{product.originalPrice}</div>
                       )}
-                      {product.discountRate && (
-                        <div className="discount-badge">{product.discountRate}</div>
-                      )}
                     </div>
                   </div>
 
@@ -120,23 +117,7 @@ const ProductDetails = ({ product, onClose }) => {
                     </div>
                     {isCalculatingDeal ? (
                       <div className="calculating">Calculating deal score...</div>
-                    ) : (
-                      <>
-                        <div className="deal-meter-bar">
-                          <div 
-                            className="deal-meter-progress"
-                            style={{ width: `${dealValue}%` }}
-                          />
-                        </div>
-                        <div className="deal-meter-labels">
-                          <span>Poor</span>
-                          <span>Fair</span>
-                          <span>Good</span>
-                          <span>Great</span>
-                          <span>Excellent</span>
-                        </div>
-                      </>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Price History Graph */}

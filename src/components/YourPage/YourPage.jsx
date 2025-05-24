@@ -882,7 +882,8 @@ const YourPage = () => {
                             borderRadius: '6px',
                             fontWeight: '600',
                             color: '#111',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            marginTop: '14px'
                           }}
                         >
                           Edit Goal
@@ -1301,9 +1302,6 @@ const YourPage = () => {
                         background: '#fffde7',
                         padding: '16px',
                         textAlign: 'center',
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 1
                       }}>
                         <img src={product.image} alt={product.name} style={{
                           width: 80,
@@ -1325,58 +1323,6 @@ const YourPage = () => {
                         }}>{product.platform}</div>
                       </div>
                     ))}
-
-                    <div key="deal-meter-header" style={{
-                      background: '#fffde7',
-                      padding: '16px',
-                      fontWeight: 600,
-                      color: '#bfa600',
-                      borderRight: '1.5px solid #ffd54f'
-                    }}>🔥 Deal Meter</div>
-                    {compareProducts.map((p, idx) => {
-                      let dealScore = 0;
-                      if (p.originalPrice && p.price && p.originalPrice > p.price) {
-                        dealScore = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
-                      }
-                      let color = dealScore > 50 ? '#43a047' : dealScore > 20 ? '#ffa000' : '#e53935';
-                      return (
-                        <div key={`deal-meter-${p.id}`} style={{
-                          padding: '16px',
-                          textAlign: 'center',
-                          background: '#fff',
-                          borderBottom: '1px solid #f3e99c'
-                        }}>
-                          <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 8
-                          }}>
-                            <div style={{
-                              width: 120,
-                              height: 12,
-                              background: '#f3f3f3',
-                              borderRadius: 6,
-                              overflow: 'hidden',
-                              marginBottom: 4
-                            }}>
-                              <div style={{
-                                width: `${dealScore}%`,
-                                height: '100%',
-                                background: color,
-                                borderRadius: 6,
-                                transition: 'width 0.3s'
-                              }}></div>
-                            </div>
-                            <span style={{
-                              fontWeight: 700,
-                              color,
-                              fontSize: 15
-                            }}>{dealScore > 0 ? `${dealScore}/100` : 'No Deal'}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
 
                     {[
                       { key: 'price', label: <span>Price</span>, get: p => p.price ? `₹${p.price}` : '—', icon: '💰' },
