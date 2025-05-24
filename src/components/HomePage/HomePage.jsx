@@ -7,7 +7,7 @@ import ProductDetails from "../ProductDetails/ProductDetails";
 import WishlistPopup from "../WishlistPopup/WishlistPopup";
 import PreferredAmountPopup from "../PreferredAmountPopup/PreferredAmountPopup";
 import PropTypes from "prop-types";
-import { FaBalanceScale, FaPlus, FaHeart } from 'react-icons/fa';
+import { FaBalanceScale, FaPlus } from 'react-icons/fa';
 import {
   ResponsiveContainer,
   LineChart,
@@ -471,7 +471,9 @@ const HomePage = () => {
             onClick={() => setShowWishlistPopup(true)}
             title="View Wishlist"
           >
-            <FaHeart color="#ff4081" size={24} />
+            <span role="img" aria-label="wishlist">
+              {wishlist.length > 0 ? '❤️' : '🤍'}
+            </span>
             {wishlist.length > 0 && (
               <span className="wishlist-count">{wishlist.length}</span>
             )}

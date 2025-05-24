@@ -5,7 +5,7 @@ import './WishlistPopup.css';
 const API_BASE_URL = 'http://13.203.223.3:8000';
 const API_TIMEOUT = 5000; // 5 seconds timeout
 
-const WishlistPopup = ({ wishlist, onClose, onRemove, userEmail }) => {
+const WishlistPopup = ({ wishlist, onClose, onRemove, userEmail, onEditGoal }) => {
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingItemId, setLoadingItemId] = useState(null);
@@ -142,7 +142,26 @@ const WishlistPopup = ({ wishlist, onClose, onRemove, userEmail }) => {
                     </td>
                     <td className="amount-input-cell">
                       <div className="amount-display">
-                        {product.preferredAmount ? `₹${product.preferredAmount.toFixed(2)}` : '-'}
+                        {product.preferredAmount != null && product.preferredAmount !== "" ? (
+                          <div className="goal-container">
+                            <div className="goal-info">
+                              <span className="goal-label">Current Price:</span>
+                              <span className="goal-amount">₹{product.price.toFixed(2)}</span>
+                            </div>
+                            <div className="goal-info">
+                              <span className="goal-label">Goal Price:</span>
+                              <span className="goal-amount">₹{Number(product.preferredAmount).toFixed(2)}</span>
+                            </div>
+                            <button
+                              className="edit-goal-button"
+                              onClick={() => onEditGoal(product)}
+                            >
+                              Edit Goal
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="no-goal">No goal set</span>
+                        )}
                       </div>
                     </td>
                     <td className="actions">
@@ -180,7 +199,8 @@ WishlistPopup.propTypes = {
   ).isRequired,
   onClose: PropTypes.func.isRequired,
   onRemove: PropTypes.func.isRequired,
-  userEmail: PropTypes.string.isRequired
+  userEmail: PropTypes.string.isRequired,
+  onEditGoal: PropTypes.func.isRequired
 };
 
 export default WishlistPopup;
