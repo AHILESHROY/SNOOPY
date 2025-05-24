@@ -5,24 +5,10 @@ import './WishlistPopup.css';
 const API_BASE_URL = 'http://13.203.223.3:8000';
 const API_TIMEOUT = 5000; // 5 seconds timeout
 
-const WishlistPopup = ({ wishlist, onClose, onAmountChange, onRemove, userEmail }) => {
-  const [amountErrors, setAmountErrors] = useState({});
+const WishlistPopup = ({ wishlist, onClose, onRemove, userEmail }) => {
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingItemId, setLoadingItemId] = useState(null);
-  const [localAmounts, setLocalAmounts] = useState({});
-
-  // Initialize and update local amounts when wishlist changes
-  useEffect(() => {
-    const initialAmounts = {};
-    wishlist.forEach(product => {
-      const preferredAmount = product.preferredAmount != null ? product.preferredAmount.toString() : '';
-      initialAmounts[product.id] = preferredAmount;
-      console.log(`WishlistPopup: Mapping product ${product.id} - Preferred Amount: ${preferredAmount}`);
-    });
-    console.log('WishlistPopup: Initialized localAmounts:', initialAmounts);
-    setLocalAmounts(initialAmounts);
-  }, [wishlist]);
 
   // Add keyboard event listener for Escape key
   useEffect(() => {
@@ -61,129 +47,6 @@ const WishlistPopup = ({ wishlist, onClose, onAmountChange, onRemove, userEmail 
         if (i === maxRetries - 1) throw error;
         await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
       }
-    }
-  };
-
-  const updateAmountInBackend = async (productId, amount, originalAmount) => {
-    if (!amount.trim()) {
-      setLocalAmounts(prev => ({
-        ...prev,
-        [productId]: ''
-      }));
-      onAmountChange(productId, null);
-      return;
-    }
-
-    const newAmount = parseFloat(amount);
-    const maxAmount = Math.floor(originalAmount);
-
-    if (isNaN(newAmount)) {
-      setAmountErrors(prev => ({
-        ...prev,
-        [productId]: 'Please enter a valid number'
-      }));
-      return;
-    }
-
-    if (newAmount > maxAmount) {
-      setAmountErrors(prev => ({
-        ...prev,
-        [productId]: `Amount cannot exceed ₹${maxAmount}`
-      }));
-      return;
-    }
-
-    if (newAmount < 0) {
-      setAmountErrors(prev => ({
-        ...prev,
-        [productId]: 'Amount cannot be negative'
-      }));
-      return;
-    }
-
-    // Optimistically update the UI before the backend call
-    setLocalAmounts(prev => ({
-      ...prev,
-      [productId]: newAmount.toString()
-    }));
-    onAmountChange(productId, newAmount);
-
-    setLoadingItemId(productId);
-    setIsLoading(true);
-
-    try {
-      await retryOperation(async () => {
-        const payload = {
-          email: userEmail,
-          u_id: productId,
-          price: newAmount
-        };
-        console.log('WishlistPopup: Sending update request with payload:', payload);
-        const response = await fetchWithTimeout(`${API_BASE_URL}/add_to_list`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const responseText = await response.text();
-        console.log('WishlistPopup: Raw API Response:', responseText);
-
-        if (!response.ok) {
-          let errorMessage = 'Failed to update amount';
-          try {
-            const errorData = JSON.parse(responseText);
-            errorMessage = errorData.detail || errorData.message || errorMessage;
-            if (errorMessage.includes('UniqueViolation')) {
-              errorMessage = 'This product is already in your wishlist. Updating the preferred amount.';
-            }
-          } catch (e) {
-            console.error('WishlistPopup: Error parsing error response:', e);
-          }
-          throw new Error(errorMessage);
-        }
-
-        try {
-          const data = JSON.parse(responseText);
-          if (data.message) {
-            console.log('WishlistPopup: Success:', data.message);
-            setApiError('');
-          }
-        } catch (e) {
-          console.error('WishlistPopup: Error parsing success response:', e);
-        }
-      });
-    } catch (error) {
-      console.error('WishlistPopup: Failed to update amount:', error);
-      const errorMessage = typeof error === 'object' && error.message 
-        ? error.message 
-        : 'Failed to update amount. Please try again.';
-      setApiError(errorMessage);
-    } finally {
-      setIsLoading(false);
-      setLoadingItemId(null);
-    }
-  };
-
-  const handleAmountChange = (productId, amount, originalAmount) => {
-    setLocalAmounts(prev => ({
-      ...prev,
-      [productId]: amount
-    }));
-
-    setAmountErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[productId];
-      return newErrors;
-    });
-  };
-
-  const handleKeyPress = (e, productId, amount, originalAmount) => {
-    if (e.key === 'Enter') {
-      e.target.blur();
-      updateAmountInBackend(productId, amount, originalAmount);
     }
   };
 
@@ -278,25 +141,8 @@ const WishlistPopup = ({ wishlist, onClose, onAmountChange, onRemove, userEmail 
                       )}
                     </td>
                     <td className="amount-input-cell">
-                      <div className="amount-input-container">
-                        <input
-                          type="number"
-                          value={localAmounts[product.id] ?? product.preferredAmount ?? ''}
-                          placeholder="Enter amt.."
-                          onChange={(e) => handleAmountChange(product.id, e.target.value, product.originalPrice)}
-                          onKeyPress={(e) => handleKeyPress(e, product.id, e.target.value, product.originalPrice)}
-                          onBlur={(e) => updateAmountInBackend(product.id, e.target.value, product.originalPrice)}
-                          className="amount-input"
-                          disabled={isLoading && loadingItemId === product.id}
-                          step="0.01"
-                          min="0"
-                        />
-                        {amountErrors[product.id] && (
-                          <div className="amount-error">{amountErrors[product.id]}</div>
-                        )}
-                        {isLoading && loadingItemId === product.id && (
-                          <div className="loading-indicator">Updating...</div>
-                        )}
+                      <div className="amount-display">
+                        {product.preferredAmount ? `₹${product.preferredAmount.toFixed(2)}` : '-'}
                       </div>
                     </td>
                     <td className="actions">
@@ -333,7 +179,6 @@ WishlistPopup.propTypes = {
     })
   ).isRequired,
   onClose: PropTypes.func.isRequired,
-  onAmountChange: PropTypes.func.isRequired,
   onRemove: PropTypes.func.isRequired,
   userEmail: PropTypes.string.isRequired
 };

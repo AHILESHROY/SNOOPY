@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './YourPage.css';
 import Navbar from '../Navbar/Navbar';
@@ -6,12 +6,12 @@ import ProductCard from '../ProductCard/ProductCard';
 import ProductDetails from '../ProductDetails/ProductDetails';
 import PropTypes from 'prop-types';
 import axios from 'axios';
-import { FaBalanceScale, FaTimes, FaShoppingCart } from 'react-icons/fa';
+import { FaBalanceScale, FaTimes, FaShoppingCart, FaTrash } from 'react-icons/fa';
 import PreferredAmountPopup from '../PreferredAmountPopup/PreferredAmountPopup';
 import { analyzeDealWithAI } from '../../utils/aiDealAnalyzer';
 import { LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { auth } from '../firebase'; // Import Firebase auth
-import { onAuthStateChanged } from 'firebase/auth'; // Import Firebase auth state listener
+import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const getDealLabel = (score) => {
   if (score >= 80) return "Excellent";
@@ -60,8 +60,8 @@ const YourPage = () => {
   const [dealScores, setDealScores] = useState({});
   const [compareLoading, setCompareLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('graph');
-  const [loadingUserInfo, setLoadingUserInfo] = useState(true); // Add loading state for user info
-  const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail') || ''); // Manage userEmail as state
+  const [loadingUserInfo, setLoadingUserInfo] = useState(true);
+  const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail') || '');
 
   const fetchUserInfo = async (email, firebaseUid = null) => {
     try {
@@ -92,10 +92,8 @@ const YourPage = () => {
     const uid = firebaseUser.uid;
     const name = firebaseUser.displayName || email.split('@')[0];
 
-    // Try to fetch user from backend
     let userExists = await fetchUserInfo(email, uid);
     if (!userExists) {
-      // If user doesn't exist in backend, create them
       try {
         const payload = {
           firebase_uid: uid,
@@ -104,11 +102,9 @@ const YourPage = () => {
         };
         await axios.post(`${API_BASE_URL}/users`, payload);
         console.log('User created in backend:', payload);
-        // Fetch again after creating
         await fetchUserInfo(email, uid);
       } catch (postError) {
         console.error('Error creating user in backend:', postError);
-        // Fallback to Firebase user data
         const userInfoData = {
           name: name,
           email: email,
@@ -125,7 +121,6 @@ const YourPage = () => {
     const loadUserInfo = async () => {
       setLoadingUserInfo(true);
       try {
-        // First, check localStorage
         const storedUserInfo = localStorage.getItem('userInfo');
         if (storedUserInfo) {
           const parsed = JSON.parse(storedUserInfo);
@@ -136,17 +131,13 @@ const YourPage = () => {
           }
         }
 
-        // Listen for Firebase auth state
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
           if (firebaseUser) {
             const email = firebaseUser.email;
             setUserEmail(email);
             localStorage.setItem('userEmail', email);
-
-            // Sync with backend
             await syncUserWithBackend(firebaseUser);
           } else {
-            // No user logged in
             setUserInfo(null);
             setUserEmail('');
             localStorage.removeItem('userEmail');
@@ -186,6 +177,7 @@ const YourPage = () => {
       }
 
       const data = await response.json();
+      console.log('Raw response from /get_tracked_objects:', data);
 
       if (data?.user_budgets?.[0]) {
         const trackedObjects = data.user_budgets[0];
@@ -195,15 +187,17 @@ const YourPage = () => {
           image: trackedObjects.image_url?.[index] || '',
           price: trackedObjects.product_price?.[index] || 0,
           platform: trackedObjects.platform?.[index] || 'Unknown',
-          preferredAmount: trackedObjects.preferred_amount?.[index] || null,
+          preferredAmount: trackedObjects.product_price?.[index] != null ? Number(trackedObjects.product_price[index]) : null,
           dateAdded: trackedObjects.date_added?.[index] || Date.now(),
           link: trackedObjects.link?.[index] || '',
           originalPrice: trackedObjects.original_price?.[index] || 0,
           rating: trackedObjects.ratings?.[index] || 0,
           ratingCount: trackedObjects.number_of_ratings?.[index] || 0,
           discountRate: trackedObjects.discount_rate?.[index] || "0%",
-          priceHistory: [] // Initially empty
+          priceHistory: []
         }));
+
+        console.log('Initial wishlistItems:', wishlistItems);
 
         const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
           method: 'GET',
@@ -273,6 +267,7 @@ const YourPage = () => {
           return { ...item, priceHistory: priceHistory };
         });
 
+        console.log('Updated wishlistItems:', updatedWishlistItems);
         setWishlist(updatedWishlistItems);
       } else {
         setWishlist([]);
@@ -286,7 +281,7 @@ const YourPage = () => {
     fetchWishlist();
     const pollInterval = setInterval(fetchWishlist, 5000);
     return () => clearInterval(pollInterval);
-  }, [userEmail]); // Trigger fetchWishlist when userEmail changes
+  }, [userEmail]);
 
   const fetchRecommendedProducts = async () => {
     try {
@@ -408,6 +403,11 @@ const YourPage = () => {
     setShowPreferredAmountPopup(true);
   };
 
+  const handleEditGoal = (product) => {
+    setSelectedProductForAmount(product);
+    setShowPreferredAmountPopup(true);
+  };
+
   const handleProfileEditToggle = () => {
     setIsEditingProfile(!isEditingProfile);
     setProfileError('');
@@ -433,7 +433,7 @@ const YourPage = () => {
       });
       const updatedUserInfo = { ...userInfo, name: profileForm.name, email: profileForm.email };
       setUserInfo(updatedUserInfo);
-      setUserEmail(profileForm.email); // Update userEmail state
+      setUserEmail(profileForm.email);
       localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
       localStorage.setItem('userEmail', profileForm.email);
       setProfileSuccess('Profile updated successfully!');
@@ -784,9 +784,6 @@ const YourPage = () => {
                     <div className="yp-profile-view">
                       <p><strong>Name:</strong> {userInfo.name || 'Unknown User'}</p>
                       <p><strong>Email:</strong> {userInfo.email || 'N/A'}</p>
-                      <button className="yp-edit-button" onClick={handleProfileEditToggle}>
-                        Edit Profile
-                      </button>
                     </div>
                   )}
                 </div>
@@ -843,26 +840,54 @@ const YourPage = () => {
                 .map(product => (
                   <div key={product.id} className="yp-wishlist-card-innovative">
                     <div className="yp-wishlist-card-platform-badge">
-                      <a href={product.link} target="_blank" rel="noopener noreferrer" title={`View on site`} style={{display:'flex',alignItems:'center'}}>
+                      <a href={product.link} target="_blank" rel="noopener noreferrer" title={`View on site`} style={{ display: 'flex', alignItems: 'center' }}>
                         <FaShoppingCart style={{ color: '#bfa600', fontSize: 28 }} />
                       </a>
                     </div>
-                    <div className="yp-wishlist-card-remove" onClick={() => handleRemoveFromWishlist(product)} title="Remove">
-                      <i className="fa fa-trash"></i>
+                    {/* Trash Icon - top right */}
+                    <div className="yp-wishlist-card-remove" title="Remove from Wishlist">
+                      <FaTrash onClick={() => handleRemoveFromWishlist(product)} style={{ cursor: 'pointer', color: '#f44336', fontSize: '18px' }} />
                     </div>
-                    <div className="yp-wishlist-card-quickview" onClick={() => handleViewProduct(product)} title="View Details">
-                      <i className="fa fa-eye"></i>
+                    {/* View Icon - below trash, spaced */}
+                    <div className="yp-wishlist-card-quickview" title="View Details" style={{ top: 56, right: 12, position: 'absolute' }}>
+                      <i className="fa fa-eye" onClick={() => handleViewProduct(product)} style={{ cursor: 'pointer', color: '#4caf50', fontSize: '18px' }}></i>
                     </div>
                     <img src={product.image} alt={product.name} className="yp-wishlist-card-image" />
                     <div className="yp-wishlist-card-info">
                       <div className="yp-wishlist-card-name">{product.name}</div>
-                      <div className="yp-wishlist-card-price">₹{product.price}</div>
-                      {product.preferredAmount && (
-                        <div className="yp-wishlist-card-progress">
-                          <div className="yp-wishlist-card-progress-bar" style={{width: `${Math.min(100, Math.round((product.price / product.preferredAmount) * 100))}%`}}></div>
-                          <span className="yp-wishlist-card-progress-label">Goal: ₹{product.preferredAmount}</span>
-                        </div>
-                      )}
+                      <div className="yp-wishlist-card-price-info">
+                        {product.preferredAmount != null && product.preferredAmount !== "" ? (
+                          <div className="goal-container">
+                            <div className="goal-info">
+                              <span className="goal-label">Current Price:</span>
+                              <span className="goal-amount">₹{product.price.toFixed(2)}</span>
+                            </div>
+                            <div className="goal-info">
+                              <span className="goal-label">Goal Price:</span>
+                              <span className="goal-amount">₹{Number(product.preferredAmount).toFixed(2)}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span>No goal set</span>
+                        )}
+                      </div>
+                      <div className="yp-wishlist-card-actions">
+                        <button 
+                          onClick={() => handleEditGoal(product)} 
+                          className="yp-edit-goal-button"
+                          style={{
+                            padding: '6px 12px',
+                            background: '#ffd54f',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontWeight: '600',
+                            color: '#111',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Edit Goal
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1132,7 +1157,7 @@ const YourPage = () => {
                   }}
                 >
                   📊 Price History Graph
-              </button>
+                </button>
                 <button
                   onClick={() => setActiveTab('table')}
                   style={{

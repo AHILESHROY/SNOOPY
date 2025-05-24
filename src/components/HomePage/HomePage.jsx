@@ -7,7 +7,7 @@ import ProductDetails from "../ProductDetails/ProductDetails";
 import WishlistPopup from "../WishlistPopup/WishlistPopup";
 import PreferredAmountPopup from "../PreferredAmountPopup/PreferredAmountPopup";
 import PropTypes from "prop-types";
-import { FaBalanceScale, FaPlus } from 'react-icons/fa';
+import { FaBalanceScale, FaPlus, FaHeart } from 'react-icons/fa';
 import {
   ResponsiveContainer,
   LineChart,
@@ -60,7 +60,8 @@ const HomePage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
         },
         body: JSON.stringify({ email: userEmail })
       });
@@ -70,6 +71,7 @@ const HomePage = () => {
       }
 
       const data = await response.json();
+      console.log('Fetched wishlist data:', data); // Debug log
       
       if (data?.user_budgets?.[0]) {
         const trackedObjects = data.user_budgets[0];
@@ -77,9 +79,9 @@ const HomePage = () => {
           id,
           name: trackedObjects.product_name?.[index] || 'Unknown Product',
           image: trackedObjects.image_url?.[index] || '',
-          price: trackedObjects.product_price?.[index] || 0,
+          price: trackedObjects.price?.[index] || 0, // Current price, if available
           platform: trackedObjects.platform?.[index] || 'Unknown',
-          preferredAmount: trackedObjects.preferred_amount?.[index] || null,
+          preferredAmount: trackedObjects.product_price?.[index] || null, // Map preferred amount from product_price
           dateAdded: trackedObjects.date_added?.[index] || Date.now(),
           link: trackedObjects.link?.[index] || '',
           originalPrice: trackedObjects.original_price?.[index] || 0,
@@ -93,12 +95,14 @@ const HomePage = () => {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
           }
         });
 
         if (productsResponse.ok) {
           const productsData = await productsResponse.json();
+          console.log('Fetched products data:', productsData); // Debug log
           if (productsData?.data) {
             const productsMap = new Map(productsData.data.map(p => [p.u_id, p]));
             
@@ -116,12 +120,14 @@ const HomePage = () => {
                   rating: completeProduct.ratings || item.rating,
                   ratingCount: completeProduct.number_of_ratings || item.ratingCount,
                   discountRate: completeProduct.discount_rate || item.discountRate
+                  // Note: Do NOT override preferredAmount here; keep the value from trackedObjects
                 };
               }
               return item;
             });
             
             setWishlist(updatedWishlistItems);
+            console.log('Updated wishlist:', updatedWishlistItems); // Debug log
           } else {
             setWishlist(wishlistItems);
           }
@@ -148,7 +154,8 @@ const HomePage = () => {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            'Access-Control-Allow-Origin': '*'
+            'Access-Control-Allow-Origin': '*',
+            'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
           },
           mode: 'cors'
         });
@@ -171,7 +178,8 @@ const HomePage = () => {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
+            'Access-Control-Allow-Origin': '*',
+            'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
           },
           mode: 'cors'
         });
@@ -279,7 +287,8 @@ const HomePage = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
           },
           body: JSON.stringify({
             email: userEmail,
@@ -307,32 +316,10 @@ const HomePage = () => {
   };
 
   const handlePreferredAmountConfirm = async (amount) => {
-    if (selectedProductForAmount) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/add_to_list`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({
-            email: userEmail,
-            u_id: selectedProductForAmount.id,
-            price: amount
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        await fetchWishlist();
-      } catch (error) {
-        console.error('Error adding to wishlist:', error);
-      }
-    }
+    // Remove redundant /add_to_list call since PreferredAmountPopup already handles it
     setShowPreferredAmountPopup(false);
     setSelectedProductForAmount(null);
+    await fetchWishlist(); // Refresh wishlist to reflect the new preferred amount
   };
 
   const handleRemoveFromWishlist = async (product) => {
@@ -341,7 +328,8 @@ const HomePage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
         },
         body: JSON.stringify({
           email: userEmail,
@@ -426,7 +414,8 @@ const HomePage = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Authorization': 'Bearer your-firebase-token-here' // Replace with actual token
         },
         body: JSON.stringify(payload)
       });
@@ -482,9 +471,7 @@ const HomePage = () => {
             onClick={() => setShowWishlistPopup(true)}
             title="View Wishlist"
           >
-            <span role="img" aria-label="wishlist">
-              {wishlist.length > 0 ? '❤️' : '🤍'}
-            </span>
+            <FaHeart color="#ff4081" size={24} />
             {wishlist.length > 0 && (
               <span className="wishlist-count">{wishlist.length}</span>
             )}
@@ -924,6 +911,7 @@ const HomePage = () => {
           onAmountChange={handlePreferredAmountConfirm}
           onRemove={handleRemoveFromWishlist}
           userEmail={userEmail}
+          onEditGoal={handleEditPreferredAmount} // Added onEditGoal prop
         />
       )}
       {showPreferredAmountPopup && selectedProductForAmount && (

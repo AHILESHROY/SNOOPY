@@ -577,7 +577,7 @@
 }
 .yp-wishlist-card-progress {
   width: 100%;
-  background: #333;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   height: 14px;
   margin-bottom: 6px;
@@ -587,19 +587,20 @@
 }
 .yp-wishlist-card-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, #ffd54f 60%, #4caf50 100%);
   border-radius: 8px;
-  transition: width 0.4s;
+  transition: width 0.4s ease, background-color 0.4s ease;
 }
 .yp-wishlist-card-progress-label {
   font-size: 0.85rem;
-  color: black;
+  color: #fff;
   font-weight: 600;
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
 }
 .yp-wishlist-card-setgoal {
   margin-top: 12px;
@@ -819,3 +820,4 @@ body, .yp-yourpage-container, .yp-yourpage-content {
   font-weight: 600;
   color: #bfa600;
 }
+

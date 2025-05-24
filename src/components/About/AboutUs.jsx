@@ -20,27 +20,33 @@ const HeroSection = () => (
 const DevelopmentProcess = () => {
   const timelineItems = [
     {
-      date: "2024 JAN",
+      date: "2023 DEC",
       title: "PLANNING & RESEARCH",
-      description: "Initial market research and product planning phase",
+      description: "Conducted market research, defined product requirements, and created initial wireframes. Established core team and set up development infrastructure.",
       icon: "fa-lightbulb"
     },
     {
-      date: "2024 FEB-APR",
-      title: "DEVELOPMENT",
-      description: "Core development and feature implementation",
+      date: "2024 JAN-FEB",
+      title: "PROTOTYPE DEVELOPMENT",
+      description: "Built initial prototype with core features. Implemented basic price tracking and user authentication. Created database schema and API endpoints.",
       icon: "fa-code"
     },
     {
-      date: "2024 MAY",
-      title: "TESTING",
-      description: "Quality assurance and user testing",
-      icon: "fa-bug"
+      date: "2024 MAR-APR",
+      title: "CORE DEVELOPMENT",
+      description: "Developed main features including price alerts, wishlist management, and browser extension. Implemented web scraping system and price comparison engine.",
+      icon: "fa-gears"
     },
     {
       date: "2024 MAY",
-      title: "LAUNCH",
-      description: "Product release and market entry",
+      title: "TESTING & OPTIMIZATION",
+      description: "Conducted comprehensive testing including unit tests, integration tests, and user acceptance testing. Optimized performance and fixed critical bugs.",
+      icon: "fa-bug"
+    },
+    {
+      date: "2024 JUN",
+      title: "BETA LAUNCH",
+      description: "Released beta version to select users. Gathered feedback and implemented improvements. Prepared for full public launch.",
       icon: "fa-rocket"
     }
   ];
@@ -52,14 +58,18 @@ const DevelopmentProcess = () => {
       const timeline = document.querySelector('.timeline');
       if (timeline) {
         const rect = timeline.getBoundingClientRect();
-        const isInView = rect.top < window.innerHeight && rect.bottom >= 0;
+        const isInView = rect.top < window.innerHeight * 0.8 && rect.bottom >= 0;
         setIsVisible(isInView);
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Check initial state
+    // Initial check
+    handleScroll();
 
+    // Add scroll event listener
+    window.addEventListener('scroll', handleScroll);
+
+    // Cleanup
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 

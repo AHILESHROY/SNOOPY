@@ -293,6 +293,7 @@ body::-webkit-scrollbar {
   position: absolute;
   top: -5px;
   right: -5px;
+  pointer-events: none;
 }
 
 .wishlist-container {

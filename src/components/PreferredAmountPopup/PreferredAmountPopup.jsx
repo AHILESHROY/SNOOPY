@@ -95,8 +95,10 @@ const PreferredAmountPopup = ({ onClose, onConfirm, product, userEmail }) => {
           }
         });
 
-        console.log('PreferredAmountPopup: Calling onConfirm with amount:', amount);
-        onConfirm(amount);
+        // Convert amount to a number before passing to onConfirm
+        const confirmedAmount = parseFloat(amount);
+        console.log('PreferredAmountPopup: Calling onConfirm with amount:', confirmedAmount);
+        onConfirm(confirmedAmount);
         console.log('PreferredAmountPopup: Closing popup');
         onClose();
       } catch (error) {
