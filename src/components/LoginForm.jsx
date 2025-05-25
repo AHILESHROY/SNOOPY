@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "./firebase";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from "firebase/auth";
@@ -15,7 +15,7 @@ const SnoopyAuth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
-  const [userInfo, setUserInfo] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const API_BASE_URL = 'http://13.203.223.3:8000';
 
@@ -38,6 +38,8 @@ const SnoopyAuth = () => {
     generateCarts();
   }, []);
 
+  const memoizedCarts = useMemo(() => carts, [carts]);
+
   useEffect(() => {
     let strength = 0;
     if (formData.password.length >= 8) strength++;
@@ -48,6 +50,10 @@ const SnoopyAuth = () => {
     console.log("Password Strength:", strength);
   }, [formData.password]);
 
+  useEffect(() => {
+    console.log("Error state updated:", error);
+  }, [error]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setSuccess("");
@@ -56,6 +62,7 @@ const SnoopyAuth = () => {
 
   const handleGoogleSignIn = async () => {
     try {
+      setIsLoading(true);
       setError("");
       setSuccess("");
       console.log("Initiating Google Sign-In...");
@@ -63,70 +70,16 @@ const SnoopyAuth = () => {
       const user = result.user;
       console.log("Google Sign-In successful:", user);
 
-      const payload = {
-        firebase_uid: user.uid,
+      const userInfo = {
+        name: user.displayName || "Google User",
         email: user.email,
-        name: user.displayName || formData.name || "Google User",
+        firebase_uid: user.uid
       };
-      console.log("Sending POST /users payload:", payload);
-
-      try {
-        const postResponse = await axios.post(`${API_BASE_URL}/users`, payload);
-        console.log("POST /users response:", postResponse.data);
-      } catch (postError) {
-        console.error("Error posting user to backend:", postError.response?.data || postError.message);
-        setError("Failed to save user info to backend: " + (postError.response?.data?.detail || postError.message));
-      }
-
-      try {
-        const getResponse = await axios.get(`${API_BASE_URL}/user/${user.uid}`);
-        console.log("GET /user response:", getResponse.data);
-        setUserInfo(getResponse.data);
-        localStorage.setItem('userInfo', JSON.stringify({ name: getResponse.data.name, email: getResponse.data.email }));
-      } catch (getError) {
-        console.error("Error fetching user from backend:", getError.response?.data || getError.message);
-        setError("Failed to fetch user info from backend: " + (getError.response?.data?.detail || getError.message));
-      }
-
-      // Fetch tracked products
-      try {
-        const trackedResponse = await axios.post(`${API_BASE_URL}/tracked_objects`, {
-          email: user.email
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (trackedResponse.data && Array.isArray(trackedResponse.data.user_budgets)) {
-          // Transform the backend data to match our frontend structure
-          const transformedProducts = trackedResponse.data.user_budgets.map(item => ({
-            id: item.id || item._id,
-            name: item.name || item.product_name,
-            price: item.current_price,
-            originalPrice: item.original_price,
-            discountRate: item.discount_rate,
-            image: item.image_url,
-            platform: item.platform,
-            rating: item.rating,
-            ratingCount: item.rating_count,
-            priceHistory: item.price_history || [],
-            url: item.product_url,
-            preferredAmount: item.preferred_amount || null
-          }));
-          
-          // Store tracked products in localStorage
-          localStorage.setItem('wishlist', JSON.stringify(transformedProducts));
-        }
-      } catch (trackedError) {
-        console.error('Error fetching tracked products:', trackedError);
-        // Don't set error, just log it
-      }
-
+      localStorage.setItem('userInfo', JSON.stringify(userInfo));
       localStorage.setItem('userEmail', user.email);
 
       setSuccess("Signed in with Google successfully!");
-      setTimeout(() => navigate("/home"), 1000);
+      setTimeout(() => navigate("/home"), 500);
     } catch (err) {
       console.error("Google Sign-In error:", err);
       const errorMessages = {
@@ -137,6 +90,8 @@ const SnoopyAuth = () => {
         "auth/invalid-api-key": "Invalid Firebase API key. Check your configuration.",
       };
       setError(errorMessages[err.code] || `Failed to sign in with Google: ${err.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -154,90 +109,58 @@ const SnoopyAuth = () => {
     }
 
     try {
+      setIsLoading(true);
       setError("");
       setSuccess("");
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
       console.log("Firebase sign-up successful:", user);
 
-      // Store user info in localStorage immediately
       const userInfo = {
-        name: formData.name,
+        name: formData.name || user.email.split('@')[0],
         email: user.email,
         firebase_uid: user.uid
       };
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
       localStorage.setItem('userEmail', user.email);
-      setUserInfo(userInfo);
 
-      // Try to save to backend, but don't block on failure
       try {
-        const payload = {
-          firebase_uid: user.uid,
-          email: user.email,
-          name: formData.name,
-        };
-        console.log("Sending POST /users payload:", payload);
-        const postResponse = await axios.post(`${API_BASE_URL}/users`, payload);
-        console.log("POST /users response:", postResponse.data);
-
-        // Initialize tracked products for new user
-        console.log("Initializing tracked products for new user:", user.email);
-        try {
-          const trackedResponse = await axios.post(`${API_BASE_URL}/tracked_objects`, {
-            email: user.email
-          }, {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          console.log("Tracked products response:", trackedResponse.data);
-          
-          if (trackedResponse.data && Array.isArray(trackedResponse.data.user_budgets)) {
-            // Transform the backend data to match our frontend structure
-            const transformedProducts = trackedResponse.data.user_budgets.map(item => {
-              console.log("Processing tracked item:", item);
-              return {
-                id: item.id || item._id,
-                name: item.name || item.product_name,
-                price: item.current_price,
-                originalPrice: item.original_price,
-                discountRate: item.discount_rate,
-                image: item.image_url,
-                platform: item.platform,
-                rating: item.rating,
-                ratingCount: item.rating_count,
-                priceHistory: item.price_history || [],
-                url: item.product_url,
-                preferredAmount: item.preferred_amount || null
-              };
-            });
-            
-            console.log("Transformed products:", transformedProducts);
-            
-            // Store tracked products in localStorage
-            localStorage.setItem('wishlist', JSON.stringify(transformedProducts));
-            console.log("Successfully stored tracked products in localStorage");
-          } else {
-            console.log("No tracked products found, initializing empty array");
-            localStorage.setItem('wishlist', JSON.stringify([]));
+        const trackedResponse = await axios.post(`${API_BASE_URL}/tracked_objects`, {
+          email: user.email
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
           }
-        } catch (trackedError) {
-          console.error('Error initializing tracked products:', trackedError);
-          console.error('Error details:', trackedError.response?.data || trackedError.message);
-          // Initialize with empty array if there's an error
+        });
+        
+        if (trackedResponse.data && Array.isArray(trackedResponse.data.user_budgets)) {
+          const transformedProducts = trackedResponse.data.user_budgets.map(item => ({
+            id: item.id || item._id,
+            name: item.name || item.product_name,
+            price: item.current_price,
+            originalPrice: item.original_price,
+            discountRate: item.discount_rate,
+            image: item.image_url,
+            platform: item.platform,
+            rating: item.rating,
+            ratingCount: item.rating_count,
+            priceHistory: item.price_history || [],
+            url: item.product_url,
+            preferredAmount: item.preferred_amount || null
+          }));
+          
+          localStorage.setItem('wishlist', JSON.stringify(transformedProducts));
+        } else {
           localStorage.setItem('wishlist', JSON.stringify([]));
-          console.log("Initialized empty wishlist due to error");
         }
-      } catch (postError) {
-        console.error("Error posting user to backend:", postError.response?.data || postError.message);
-        // Don't set error, just log it
+      } catch (trackedError) {
+        console.error('Error fetching tracked products:', trackedError);
+        localStorage.setItem('wishlist', JSON.stringify([]));
       }
 
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
       setSuccess("Account created successfully!");
-      setTimeout(() => navigate("/home"), 1000);
+      setTimeout(() => navigate("/home"), 500);
     } catch (err) {
       console.error("Sign-up error:", err);
       const errorMessages = {
@@ -247,6 +170,8 @@ const SnoopyAuth = () => {
         "auth/operation-not-allowed": "Sign-up is currently disabled.",
       };
       setError(errorMessages[err.code] || "An error occurred during sign-up: " + err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -254,118 +179,39 @@ const SnoopyAuth = () => {
     e.preventDefault();
 
     try {
+      setIsLoading(true);
       setError("");
       setSuccess("");
+      console.log("Attempting to sign in with email:", formData.email);
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
       console.log("Firebase login successful:", user);
 
-      // Store email immediately after successful login
-      const userEmail = user.email;
-      localStorage.setItem('userEmail', userEmail);
-      console.log("Stored user email:", userEmail);
-
-      // Create user info object with fallback values
       const userInfo = {
         name: user.displayName || formData.email.split('@')[0],
-        email: userEmail,
+        email: user.email,
         firebase_uid: user.uid
       };
-
-      // Try to get user info from backend, if not found create new user
-      try {
-        const getResponse = await axios.get(`${API_BASE_URL}/user/${user.uid}`);
-        console.log("GET /user response:", getResponse.data);
-        if (getResponse.data && getResponse.data.name) {
-          userInfo.name = getResponse.data.name;
-        }
-      } catch (getError) {
-        console.log("User not found in backend, creating new user...");
-        try {
-          // Create user in backend
-          const payload = {
-            firebase_uid: user.uid,
-            email: userEmail,
-            name: user.displayName || formData.email.split('@')[0],
-          };
-          console.log("Creating user in backend with payload:", payload);
-          const postResponse = await axios.post(`${API_BASE_URL}/user`, payload);
-          console.log("User created in backend:", postResponse.data);
-          if (postResponse.data && postResponse.data.name) {
-            userInfo.name = postResponse.data.name;
-          }
-        } catch (postError) {
-          console.error("Error creating user in backend:", postError.response?.data || postError.message);
-          // Continue with the fallback user info
-        }
-      }
-
-      // Fetch tracked products using stored email
-      console.log("Fetching tracked products for user:", userEmail);
-      try {
-        const trackedResponse = await axios.post(`${API_BASE_URL}/tracked_objects`, {
-          email: userEmail
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log("Tracked products response:", trackedResponse.data);
-        
-        if (trackedResponse.data && Array.isArray(trackedResponse.data.user_budgets)) {
-          // Transform the backend data to match our frontend structure
-          const transformedProducts = trackedResponse.data.user_budgets.map(item => {
-            console.log("Processing tracked item:", item);
-            return {
-              id: item.id || item._id,
-              name: item.name || item.product_name,
-              price: item.current_price,
-              originalPrice: item.original_price,
-              discountRate: item.discount_rate,
-              image: item.image_url,
-              platform: item.platform,
-              rating: item.rating,
-              ratingCount: item.rating_count,
-              priceHistory: item.price_history || [],
-              url: item.product_url,
-              preferredAmount: item.preferred_amount || null
-            };
-          });
-          
-          console.log("Transformed products:", transformedProducts);
-          
-          // Store tracked products in localStorage
-          localStorage.setItem('wishlist', JSON.stringify(transformedProducts));
-          console.log("Successfully stored tracked products in localStorage");
-        } else {
-          console.log("No tracked products found, initializing empty array");
-          localStorage.setItem('wishlist', JSON.stringify([]));
-        }
-      } catch (trackedError) {
-        console.error('Error fetching tracked products:', trackedError);
-        console.error('Error details:', trackedError.response?.data || trackedError.message);
-        // Initialize with empty array if there's an error
-        localStorage.setItem('wishlist', JSON.stringify([]));
-        console.log("Initialized empty wishlist due to error");
-      }
-
-      // Store user info in localStorage
-      setUserInfo(userInfo);
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      localStorage.setItem('userEmail', user.email);
 
       setFormData({ name: "", email: "", password: "", confirmPassword: "" });
       setSuccess("Signed in successfully!");
-      setTimeout(() => navigate("/home"), 1000);
+      setTimeout(() => navigate("/home"), 500);
     } catch (err) {
       console.error("Sign-in error:", err);
+      console.log("Error code:", err.code);
       const errorMessages = {
         "auth/user-not-found": "No user found with this email.",
         "auth/wrong-password": "Incorrect password.",
         "auth/invalid-email": "Please enter a valid email address.",
         "auth/too-many-requests": "Too many attempts. Please try again later.",
       };
-      setError(errorMessages[err.code] || "Failed to sign in: " + err.message);
+      const errorMessage = errorMessages[err.code] || "Failed to sign in: " + err.message;
+      setError(errorMessage);
+      console.log("Error message set to:", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -377,6 +223,7 @@ const SnoopyAuth = () => {
     }
 
     try {
+      setIsLoading(true);
       setError("");
       setSuccess("");
       await sendPasswordResetEmail(auth, formData.email);
@@ -389,6 +236,8 @@ const SnoopyAuth = () => {
         "auth/too-many-requests": "Too many requests. Please try again later.",
       };
       setError(errorMessages[err.code] || "Failed to send password reset email: " + err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -399,7 +248,7 @@ const SnoopyAuth = () => {
   return (
     <div className={`container ${isSignUp ? "active" : ""}`} id="container">
       <div className="cart-rain-container">
-        {carts.map((cart) => (
+        {memoizedCarts.map((cart) => (
           <i
             key={cart.id}
             className="fa-solid fa-cart-shopping cart"
@@ -407,6 +256,7 @@ const SnoopyAuth = () => {
               left: cart.left,
               animationDuration: cart.animationDuration,
               animationDelay: cart.animationDelay,
+              animationPlayState: isLoading ? 'paused' : 'running',
             }}
           ></i>
         ))}
@@ -429,6 +279,7 @@ const SnoopyAuth = () => {
               value={formData.name}
               onChange={handleChange}
               required
+              disabled={isLoading}
             />
           </div>
           <div className="input-wrapper">
@@ -439,6 +290,7 @@ const SnoopyAuth = () => {
               value={formData.email}
               onChange={handleChange}
               required
+              disabled={isLoading}
             />
             {error && error.includes("email") && (
               <span className="error-tooltip">{error}</span>
@@ -454,12 +306,14 @@ const SnoopyAuth = () => {
                 onChange={handleChange}
                 required
                 minLength={8}
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="toggle-password"
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
+                disabled={isLoading}
               >
                 <i className={`fa-solid ${showPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
               </button>
@@ -488,12 +342,14 @@ const SnoopyAuth = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="toggle-password"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                disabled={isLoading}
               >
                 <i className={`fa-solid ${showConfirmPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
               </button>
@@ -502,8 +358,8 @@ const SnoopyAuth = () => {
               <span className="error-tooltip">{error}</span>
             )}
           </div>
-          <button type="submit">
-            Sign Up
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? "Signing Up..." : "Sign Up"}
           </button>
         </form>
       </div>
@@ -525,6 +381,7 @@ const SnoopyAuth = () => {
               value={formData.email}
               onChange={handleChange}
               required
+              disabled={isLoading}
             />
             {error && (error.includes("email") || error.includes("No user found")) && (
               <span className="error-tooltip">{error}</span>
@@ -539,24 +396,28 @@ const SnoopyAuth = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="toggle-password"
                 onClick={() => setShowSignInPassword(!showSignInPassword)}
                 aria-label={showSignInPassword ? "Hide password" : "Show password"}
+                disabled={isLoading}
               >
                 <i className={`fa-solid ${showSignInPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
               </button>
             </div>
-            {error && error.includes("password") && (
+            {error && (
               <span className="error-tooltip">{error}</span>
             )}
           </div>
-          <button type="button" className="forgot-password" onClick={handlePasswordReset}>
+          <button type="button" className="forgot-password" onClick={handlePasswordReset} disabled={isLoading}>
             Forgot Your Password?
           </button>
-          <button type="submit">Sign In</button>
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? "Signing In..." : "Sign In"}
+          </button>
         </form>
       </div>
 
@@ -566,27 +427,19 @@ const SnoopyAuth = () => {
             <h1>SNOOPY</h1>
             <h2>LETS GET STARTED</h2>
             <p>Enter your personal details to use all site features</p>
-            <button className="hidden" onClick={() => setIsSignUp(false)}>
+            <button className="hidden" onClick={() => setIsSignUp(false)} disabled={isLoading}>
               Sign In
             </button>
           </div>
           <div className="toggle-panel toggle-right">
             <h1>WELCOME BACK!</h1>
             <p>Register with your personal details to use all site features</p>
-            <button className="hidden" onClick={() => setIsSignUp(true)}>
+            <button className="hidden" onClick={() => setIsSignUp(true)} disabled={isLoading}>
               Sign Up
             </button>
           </div>
         </div>
       </div>
-
-      {userInfo && (
-        <div className="user-info">
-          <h3>User Information:</h3>
-          <p>Name: {userInfo.name}</p>
-          <p>Email: {userInfo.email}</p>
-        </div>
-      )}
 
       {success && (
         <div className="toast-notification success">

@@ -911,9 +911,9 @@ const YourPage = () => {
               style={{
                 background: compareMode ? '#ffd54f' : '#fff',
                 color: '#111',
-                border: '1.5px solid #ffd54f',
+                border: '1.5px solid #000',
                 borderRadius: 8,
-                fontWeight: 700,
+                fontWeight: 600,
                 padding: '8px 18px',
                 cursor: 'pointer',
                 boxShadow: compareMode ? '0 2px 8px #ffd54f55' : 'none',
@@ -930,10 +930,11 @@ const YourPage = () => {
               style={{
                 padding: '8px 12px',
                 borderRadius: 8,
-                border: '1.5px solid #ffd54f',
+                border: '1.5px solid #000',
                 fontWeight: 600,
                 background: '#fff',
-                minWidth: 120
+                minWidth: 120,
+                color: '#000'
               }}
             >
               <option value="All">All Sites</option>
@@ -947,10 +948,11 @@ const YourPage = () => {
               style={{
                 padding: '8px 12px',
                 borderRadius: 8,
-                border: '1.5px solid #ffd54f',
+                border: '1.5px solid #000',
                 fontWeight: 600,
                 background: '#fff',
-                minWidth: 150
+                minWidth: 150,
+                color: '#000'
               }}
             >
               <option value="default">Sort: Default</option>
@@ -960,24 +962,24 @@ const YourPage = () => {
               <option value="name-az">Name: A-Z</option>
               <option value="name-za">Name: Z-A</option>
             </select>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', background: '#fff', border: '1.5px solid #ffd54f', borderRadius: 8, padding: '8px 14px', gap: 4, minWidth: 210 }}>
-              <span style={{ fontWeight: 600, fontSize: 13, color: '#bfa600', marginBottom: 2 }}>Price Range</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', background: '#fff', border: '1.5px solid #000', borderRadius: 8, padding: '8px 14px', gap: 4, minWidth: 210 }}>
+              <span style={{ fontWeight: 500, fontSize: 13, color: '#000', marginBottom: 2 }}>Price Range</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
                   type="number"
                   placeholder="Min"
                   value={minPrice}
                   onChange={e => setMinPrice(e.target.value)}
-                  style={{ width: 70, padding: '5px 8px', borderRadius: 6, border: '1.5px solid #ffd54f', fontWeight: 500, fontSize: 13, background: '#fff' }}
+                  style={{ width: 70, padding: '5px 8px', borderRadius: 6, border: '1.5px solid #000', fontWeight: 500, fontSize: 13, background: '#fff', color: '#000' }}
                   min={0}
                 />
-                <span style={{ color: '#888' }}>-</span>
+                <span style={{ color: '#000' }}>-</span>
                 <input
                   type="number"
                   placeholder="Max"
                   value={maxPrice}
                   onChange={e => setMaxPrice(e.target.value)}
-                  style={{ width: 70, padding: '5px 8px', borderRadius: 6, border: '1.5px solid #ffd54f', fontWeight: 500, fontSize: 13, background: '#fff' }}
+                  style={{ width: 70, padding: '5px 8px', borderRadius: 6, border: '1.5px solid #000', fontWeight: 500, fontSize: 13, background: '#fff', color: '#000' }}
                   min={0}
                 />
                 {(minPrice !== '' || maxPrice !== '') && (
