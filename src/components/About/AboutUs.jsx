@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import './AboutUs.css';
-import Ahilesh from "../assets/images/ahilesh.jpg";
-import Aadhav from "../assets/images/aadhav.jpg";
-import Akhil from "../assets/images/akhil.jpg";
-import Nitish from "../assets/images/nitish.jpg";
-import Gowtham from "../assets/images/gowtham.jpg";
 
 const HeroSection = () => (
   <section className="hero-section">
@@ -163,11 +158,9 @@ const TeamSection = () => {
 
   const handleBulbClick = (index) => {
     if (activeBulb === index) {
-      // If clicking the same bulb, turn it off
       setActiveBulb(null);
       setCardsVisible(false);
     } else {
-      // If clicking a different bulb, turn it on
       setActiveBulb(index);
       setCardsVisible(true);
     }
@@ -181,35 +174,45 @@ const TeamSection = () => {
   const teamMembers = [
     { 
       name: "Ahilesh Roy", 
-      role: "Front End Developer", 
-      image: Ahilesh,
+      role: "Front End Developer",
       description: "A passionate front-end developer with expertise in React and modern web technologies. Specializes in creating responsive and interactive user interfaces."
     },
     { 
       name: "Aadhav Nagarajan", 
-      role: "Back End Developer", 
-      image: Aadhav,
+      role: "Back End Developer",
       description: "Experienced back-end developer with strong skills in database management and API development. Ensures robust and scalable server-side solutions. AWS EXPERT!!!!!!!!!!!!!!"
     },
     { 
       name: "Akhil Ramalingam", 
-      role: "Front End Developer", 
-      image: Akhil,
+      role: "Front End Developer",
       description: "Creative front-end developer focused on user experience and performance optimization. Brings innovative solutions to complex UI challenges."
     },
     { 
       name: "Nitish Balamurali", 
-      role: "Back End Developer", 
-      image: Nitish,
+      role: "Back End Developer",
       description: "Back-end specialist with expertise in system architecture and cloud services. Implements efficient and secure server-side solutions."
     },
     { 
       name: "Gowtham V", 
-      role: "Extension Developer", 
-      image: Gowtham,
+      role: "Extension Developer",
       description: "A passionate extension developer with expertise in React and modern web technologies. Specializes in creating responsive and interactive user interfaces."
     }
   ];
+
+  const StickFigure = () => (
+    <svg width="200" height="300" viewBox="0 0 200 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Head */}
+      <circle cx="100" cy="50" r="30" stroke="#60a5fa" strokeWidth="4" fill="none"/>
+      {/* Body */}
+      <line x1="100" y1="80" x2="100" y2="180" stroke="#60a5fa" strokeWidth="4"/>
+      {/* Arms */}
+      <line x1="100" y1="120" x2="50" y2="150" stroke="#60a5fa" strokeWidth="4"/>
+      <line x1="100" y1="120" x2="150" y2="150" stroke="#60a5fa" strokeWidth="4"/>
+      {/* Legs */}
+      <line x1="100" y1="180" x2="50" y2="250" stroke="#60a5fa" strokeWidth="4"/>
+      <line x1="100" y1="180" x2="150" y2="250" stroke="#60a5fa" strokeWidth="4"/>
+    </svg>
+  );
 
   return (
     <section className="team-section">
@@ -257,7 +260,9 @@ const TeamSection = () => {
             key={index} 
             className={`team-card ${activeBulb === index ? 'visible' : ''}`}
           >
-            <img src={member.image} alt={member.name} />
+            <div className="stick-figure-container">
+              <StickFigure />
+            </div>
             <div className="team-info">
               <h3>{member.name}</h3>
               <p>{member.role}</p>
