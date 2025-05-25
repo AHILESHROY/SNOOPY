@@ -46,24 +46,6 @@ const DevelopmentProcess = () => {
     }
   ];
 
-  const [isVisible, setIsVisible] = useState(true); // Force visible for demo
-  const timelineRef = useRef(null);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (timelineRef.current) {
-        const rect = timelineRef.current.getBoundingClientRect();
-        const isInView = rect.top < window.innerHeight * 0.8 && rect.bottom >= 0;
-        console.log('handleScroll called', { rectTop: rect.top, windowHeight: window.innerHeight, isInView });
-        setIsVisible(isInView);
-      }
-    };
-
-    handleScroll();
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
   return (
     <section className="development-process" id="development-process">
       <div className="rain-container">
@@ -72,11 +54,11 @@ const DevelopmentProcess = () => {
         ))}
       </div>
       <h2>Our Development Process</h2>
-      <div className="timeline" ref={timelineRef}>
+      <div className="timeline">
         {timelineItems.map((item, index) => (
           <div 
             key={index} 
-            className={`timeline-item ${isVisible ? 'visible' : ''}`}
+            className="timeline-item visible"
             style={{ '--index': index }}
           >
             <div className="timeline-content">
@@ -176,17 +158,17 @@ const TeamSection = () => {
     { 
       name: "Aadhav Nagarajan", 
       role: "Back End Developer",
-      description: "Experienced back-end developer with strong skills in database management and API development. Ensures robust and scalable server-side solutions. AWS EXPERT!!!!!!!!!!!!!!"
+      description: "Experienced back-end developer with expertise in database management, API development, and cloud engineering."
     },
     { 
       name: "Akhil Ramalingam", 
       role: "Front End Developer",
-      description: "Creative front-end developer focused on user experience and performance optimization. Brings innovative solutions to complex UI challenges."
+      description: "Creative front-end developer focused on user experience, performance optimization, and integrating AI-driven features."
     },
     { 
       name: "Nitish Balamurali", 
-      role: "Back End Developer",
-      description: "Back-end specialist with expertise in system architecture and cloud services. Implements efficient and secure server-side solutions."
+      role: "Front End Developer",
+      description: "Front-end developer skilled in React and web scraping, focused on building responsive, interactive, and data-driven user interfaces."
     },
     { 
       name: "Gowtham V", 
