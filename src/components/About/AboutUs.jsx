@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './AboutUs.css';
 
 const HeroSection = () => (
@@ -18,53 +18,49 @@ const DevelopmentProcess = () => {
       date: "2023 DEC",
       title: "PLANNING & RESEARCH",
       description: "Conducted market research, defined product requirements, and created initial wireframes. Established core team and set up development infrastructure.",
-      icon: "fa-lightbulb"
+      icon: "💡"
     },
     {
       date: "2024 JAN-FEB",
       title: "PROTOTYPE DEVELOPMENT",
       description: "Built initial prototype with core features. Implemented basic price tracking and user authentication. Created database schema and API endpoints.",
-      icon: "fa-code"
+      icon: "💻"
     },
     {
       date: "2024 MAR-APR",
       title: "CORE DEVELOPMENT",
       description: "Developed main features including price alerts, wishlist management, and browser extension. Implemented web scraping system and price comparison engine.",
-      icon: "fa-gears"
+      icon: "⚙️"
     },
     {
       date: "2024 MAY",
       title: "TESTING & OPTIMIZATION",
       description: "Conducted comprehensive testing including unit tests, integration tests, and user acceptance testing. Optimized performance and fixed critical bugs.",
-      icon: "fa-bug"
+      icon: "🐞"
     },
     {
       date: "2024 JUN",
       title: "BETA LAUNCH",
       description: "Released beta version to select users. Gathered feedback and implemented improvements. Prepared for full public launch.",
-      icon: "fa-rocket"
+      icon: "🚀"
     }
   ];
 
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true); // Force visible for demo
+  const timelineRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
-      const timeline = document.querySelector('.timeline');
-      if (timeline) {
-        const rect = timeline.getBoundingClientRect();
+      if (timelineRef.current) {
+        const rect = timelineRef.current.getBoundingClientRect();
         const isInView = rect.top < window.innerHeight * 0.8 && rect.bottom >= 0;
+        console.log('handleScroll called', { rectTop: rect.top, windowHeight: window.innerHeight, isInView });
         setIsVisible(isInView);
       }
     };
 
-    // Initial check
     handleScroll();
-
-    // Add scroll event listener
     window.addEventListener('scroll', handleScroll);
-
-    // Cleanup
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -72,11 +68,11 @@ const DevelopmentProcess = () => {
     <section className="development-process" id="development-process">
       <div className="rain-container">
         {[...Array(20)].map((_, i) => (
-          <i key={i} className="fa-solid fa-cart-shopping rain-cart" />
+          <span key={i} className="rain-cart">🛒</span>
         ))}
       </div>
       <h2>Our Development Process</h2>
-      <div className="timeline">
+      <div className="timeline" ref={timelineRef}>
         {timelineItems.map((item, index) => (
           <div 
             key={index} 
@@ -89,7 +85,7 @@ const DevelopmentProcess = () => {
               <p>{item.description}</p>
             </div>
             <div className="process-icon">
-              <i className={`fas ${item.icon}`}></i>
+              <span>{item.icon}</span>
             </div>
           </div>
         ))}
@@ -303,7 +299,6 @@ const AboutUs = () => {
   return (
     <div className="about-page-body">
       <div className="about-container">
-      
         <HeroSection />
         <DevelopmentProcess />
         <TechStackSection />

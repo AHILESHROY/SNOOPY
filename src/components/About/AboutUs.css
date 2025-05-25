@@ -7,7 +7,7 @@
   width: 100vw;
   margin: 0;
   padding: 0;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Poppins', 'Arial', sans-serif; /* Added fallback */
   background: #000;
   color: #333;
   overflow-y: auto;
@@ -45,7 +45,7 @@
 
 /* Hero Section Typography */
 .hero-section h1 {
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Montserrat', 'Arial', sans-serif; /* Added fallback */
   font-size: 3.5rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
@@ -56,7 +56,7 @@
 }
 
 .hero-section p {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Poppins', 'Arial', sans-serif; /* Added fallback */
   font-size: 1.2rem;
   font-weight: 400;
   max-width: 600px;
@@ -146,7 +146,6 @@
   border-radius: 12px;
   padding: 1.5rem;
   position: relative;
-  backdrop-filter: blur(10px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
   width: 45%;
@@ -205,7 +204,8 @@
   z-index: 2;
 }
 
-.process-icon i {
+.process-icon i,
+.process-icon span {
   font-size: 1.5rem;
   color: #fff;
 }
@@ -213,31 +213,6 @@
 .timeline-item:hover .process-icon {
   transform: translateY(-50%) scale(1.1);
   box-shadow: 0 0 30px rgba(96, 165, 250, 0.6);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .timeline::before {
-    left: 30px;
-  }
-
-  .timeline-item {
-    padding-left: 60px;
-  }
-
-  .timeline-content {
-    width: calc(100% - 60px);
-    margin: 0 !important;
-  }
-
-  .process-icon {
-    left: 30px;
-    margin-left: 0;
-  }
-
-  .development-process h2 {
-    font-size: 2rem;
-  }
 }
 
 /* Shopping cart raining animation */
@@ -275,7 +250,6 @@
   font-size: 20px;
   opacity: 0;
   animation: rain 6s linear infinite;
-  filter: blur(1px);
 }
 
 /* Generate random positions and delays for 20 carts */
@@ -667,16 +641,6 @@
   z-index: 1;
 }
 
-@media (max-width: 768px) {
-  .team-card {
-    width: 250px;
-  }
-  
-  .description-box {
-    margin: 2rem 1rem;
-  }
-}
-
 /* Mission Statement */
 .mission-statement {
   margin-top: 69px;
@@ -688,7 +652,7 @@
 
 /* Mission Statement Typography */
 .mission-statement h2 {
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Montserrat', 'Arial', sans-serif; /* Added fallback */
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
@@ -698,7 +662,7 @@
 }
 
 .mission-statement p {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Poppins', 'Arial', sans-serif; /* Added fallback */
   font-size: 1.1rem;
   font-weight: 400;
   max-width: 600px;
@@ -713,7 +677,7 @@
   margin-top: 69px;
   padding: 2rem 1rem;
   background: #000;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Poppins', 'Arial', sans-serif; /* Added fallback */
   font-size: 1rem;
   font-weight: 400;
   color: #e5e7eb;
@@ -723,66 +687,6 @@
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .timeline::before {
-    left: 30px;
-  }
-
-  .timeline-item {
-    padding-left: 60px;
-  }
-
-  .timeline-content {
-    width: 100%;
-    margin: 0 !important;
-  }
-
-  .timeline-item::after {
-    left: 30px;
-    transform: translate(-50%, -50%);
-  }
-
-  .hero-section,
-  .development-process,
-  .team-section,
-  .mission-statement {
-    padding: 2rem 1rem;
-  }
-
-  .hero-section h1 {
-    font-size: 2.5rem;
-  }
-
-  .hero-section p {
-    font-size: 1.1rem;
-  }
-
-  .mission-statement h2 {
-    font-size: 2rem;
-  }
-
-  .mission-statement p {
-    font-size: 1rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .team-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .timeline-item {
-    animation: none;
-  }
-
-  .timeline-content,
-  .team-card {
-    transition: none;
-  }
-}
 /* Tech Stack Section */
 .tech-stack-section {
   margin-top: 69px;
@@ -911,25 +815,6 @@
   line-height: 1.6;
   margin-bottom: 0;
   text-shadow: 0 0 2px rgba(255, 255, 255, 0.1);
-}
-
-@media (max-width: 768px) {
-  .tech-columns {
-    padding: 0 1rem;
-    gap: 1.5rem;
-  }
-
-  .tech-column {
-    min-height: 160px;
-    padding: 1.5rem;
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
-  .tech-column .tech-icon {
-    margin-top: 0;
-  }
 }
 
 /* Close Button */
