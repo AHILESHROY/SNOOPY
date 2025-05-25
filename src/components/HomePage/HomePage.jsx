@@ -19,8 +19,19 @@ import {
   Legend as RechartsLegend,
   Line as RechartsLine
 } from 'recharts';
+import { auth } from "../firebase.js"; // Adjust the path to your firebase.js file
+import { getIdToken } from "firebase/auth";
 
 const API_BASE_URL = 'http://13.203.223.3:8000';
+
+const getAuthToken = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User not authenticated. Please sign in.");
+  }
+  const token = await getIdToken(user);
+  return token;
+};
 
 const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,6 +57,7 @@ const HomePage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dealScores, setDealScores] = useState({});
   const [compareLoading, setCompareLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const platformOptions = [
     { label: 'Amazon', value: 'amazon' },
@@ -59,12 +71,13 @@ const HomePage = () => {
     if (!userEmail) return;
     
     try {
+      const token = await getAuthToken();
       const response = await fetch(`${API_BASE_URL}/get_tracked_objects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': 'Bearer your-firebase-token-here'
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ email: userEmail })
       });
@@ -99,7 +112,7 @@ const HomePage = () => {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            'Authorization': 'Bearer your-firebase-token-here'
+            'Authorization': `Bearer ${token}`
           }
         });
 
@@ -144,107 +157,104 @@ const HomePage = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        console.log('Fetching products...');
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching products...');
 
-        const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Access-Control-Allow-Origin': '*',
-            'Authorization': 'Bearer your-firebase-token-here'
-          },
-          mode: 'cors'
-        });
+      const token = await getAuthToken();
+      const productsResponse = await fetch(`${API_BASE_URL}/products_complete`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Access-Control-Allow-Origin': '*',
+          'Authorization': `Bearer ${token}`
+        },
+        mode: 'cors'
+      });
 
-        if (!productsResponse.ok) {
-          throw new Error(`HTTP error! status: ${productsResponse.status}`);
-        }
-
-        const productsData = await productsResponse.json();
-        console.log('Products data received:', productsData);
-
-        if (!productsData.data || !Array.isArray(productsData.data)) {
-          console.error('Invalid products data format:', productsData);
-          throw new Error('Invalid data format received from server');
-        }
-
-        console.log('Fetching prices...');
-        const pricesResponse = await fetch(`${API_BASE_URL}/prices`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Authorization': 'Bearer your-firebase-token-here'
-          },
-          mode: 'cors'
-        });
-
-        if (!pricesResponse.ok) {
-          throw new Error(`HTTP error! status: ${pricesResponse.status}`);
-        }
-
-        const pricesData = await pricesResponse.json();
-        console.log('Prices data received:', pricesData);
-        const priceHistoryMap = new Map();
-
-        if (pricesData.data && Array.isArray(pricesData.data)) {
-          pricesData.data.forEach(item => {
-            if (item.record_date && item.price) {
-              const history = item.record_date.map((date, index) => ({
-                date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                price: item.price[index]
-              }));
-              priceHistoryMap.set(item.u_id, history);
-            }
-          });
-        }
-
-        console.log('Transforming products...');
-        const transformedProducts = productsData.data.map(product => ({
-          id: product.u_id,
-          name: product.product_name,
-          image: product.image_url,
-          price: product.price || 0,
-          originalPrice: product.original_price || 0,
-          rating: product.ratings || 0,
-          ratingCount: product.number_of_ratings || 0,
-          discountRate: product.discount_rate || "0%",
-          platform: product.platform,
-          link: product.link,
-          priceHistory: priceHistoryMap.get(product.u_id) || generatePriceHistory(product),
-          competitorPrices: [] // Add mock competitor prices if needed
-        }));
-
-        console.log('Transformed products:', transformedProducts);
-        setProducts(transformedProducts);
-
-        const randomProducts = [...transformedProducts]
-          .sort(() => 0.5 - Math.random())
-          .slice(0, 20);
-        console.log('Random products selected:', randomProducts);
-        setDisplayedProducts(randomProducts);
-        setError(null);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        console.error("Error details:", {
-          message: error.message,
-          stack: error.stack
-        });
-        setError(`Error: ${error.message}. Please check your internet connection and try again.`);
-        setProducts([]);
-        setDisplayedProducts([]);
-      } finally {
-        setLoading(false);
+      if (!productsResponse.ok) {
+        throw new Error(`HTTP error! status: ${productsResponse.status}`);
       }
-    };
 
+      const productsData = await productsResponse.json();
+      console.log('Products data received:', productsData);
+
+      if (!productsData.data || !Array.isArray(productsData.data)) {
+        console.error('Invalid products data format:', productsData);
+        throw new Error('Invalid data format received from server');
+      }
+
+      console.log('Fetching prices...');
+      const pricesResponse = await fetch(`${API_BASE_URL}/prices`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Authorization': `Bearer ${token}`
+        },
+        mode: 'cors'
+      });
+
+      if (!pricesResponse.ok) {
+        throw new Error(`HTTP error! status: ${pricesResponse.status}`);
+      }
+
+      const pricesData = await pricesResponse.json();
+      console.log('Prices data received:', pricesData);
+      const priceHistoryMap = new Map();
+
+      if (pricesData.data && Array.isArray(pricesData.data)) {
+        pricesData.data.forEach(item => {
+          if (item.record_date && item.price) {
+            const history = item.record_date.map((date, index) => ({
+              date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              price: item.price[index]
+            }));
+            priceHistoryMap.set(item.u_id, history);
+          }
+        });
+      }
+
+      console.log('Transforming products...');
+      const transformedProducts = productsData.data.map(product => ({
+        id: product.u_id,
+        name: product.product_name,
+        image: product.image_url,
+        price: product.price || 0,
+        originalPrice: product.original_price || 0,
+        rating: product.ratings || 0,
+        ratingCount: product.number_of_ratings || 0,
+        discountRate: product.discount_rate || "0%",
+        platform: product.platform,
+        link: product.link,
+        priceHistory: priceHistoryMap.get(product.u_id) || generatePriceHistory(product),
+        competitorPrices: []
+      }));
+
+      console.log('Transformed products:', transformedProducts);
+      setProducts(transformedProducts);
+
+      const randomProducts = [...transformedProducts]
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 20);
+      console.log('Random products selected:', randomProducts);
+      setDisplayedProducts(randomProducts);
+      setError(null);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setError(`Error: ${error.message}. Please check your internet connection and try again.`);
+      setProducts([]);
+      setDisplayedProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProducts();
   }, []);
 
@@ -286,12 +296,13 @@ const HomePage = () => {
     const isInWishlist = wishlist.some(p => p.id === product.id);
     if (isInWishlist) {
       try {
+        const token = await getAuthToken();
         const response = await fetch(`${API_BASE_URL}/remove_from_list`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Authorization': 'Bearer your-firebase-token-here'
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             email: userEmail,
@@ -326,12 +337,13 @@ const HomePage = () => {
 
   const handleRemoveFromWishlist = async (product) => {
     try {
+      const token = await getAuthToken();
       const response = await fetch(`${API_BASE_URL}/remove_from_list`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': 'Bearer your-firebase-token-here'
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           email: userEmail,
@@ -437,42 +449,67 @@ const HomePage = () => {
     setIsSubmitting(true);
 
     try {
+      const linkExists = products.some(product => product.link === productLink) ||
+                        wishlist.some(item => item.link === productLink);
+
+      if (linkExists) {
+        setLinkError('This product link is already being tracked.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const payload = {
         link: productLink,
-        platform: selectedPlatform
+        platform: selectedPlatform,
+        email: userEmail
       };
       console.log('HomePage: Sending request to /add_to_tracker with payload:', payload);
+
+      const token = await getAuthToken();
 
       const response = await fetch(`${API_BASE_URL}/add_to_tracker`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': 'Bearer your-firebase-token-here'
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
 
+      const contentType = response.headers.get('content-type');
       const responseText = await response.text();
       console.log('HomePage: Raw API Response from /add_to_tracker:', responseText);
 
       if (!response.ok) {
         let errorMessage = 'Failed to submit product link';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail || errorData.message || errorMessage;
-        } catch (e) {
-          console.error('HomePage: Error parsing error response:', e);
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.detail || errorData.message || errorMessage;
+          } catch (e) {
+            console.error('HomePage: Error parsing error response:', e);
+          }
+        } else {
+          errorMessage = responseText || errorMessage;
         }
         throw new Error(errorMessage);
       }
 
-      const data = JSON.parse(responseText);
-      console.log('HomePage: Parsed API Response:', data);
+      let data;
+      if (contentType && contentType.includes('application/json')) {
+        data = JSON.parse(responseText);
+        console.log('HomePage: Parsed API Response:', data);
+      } else {
+        console.log('HomePage: Non-JSON response received:', responseText);
+        data = { message: responseText };
+      }
 
+      await Promise.all([fetchProducts(), fetchWishlist()]);
       setShowLinkModal(false);
       setProductLink('');
-      window.location.reload();
+      setSuccessMessage('Product link added successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       setLinkError(error.message || 'Error submitting link. Please try again.');
       console.error('HomePage: Error submitting link:', error);
@@ -531,6 +568,18 @@ const HomePage = () => {
         </div>
       </div>
       <div className="content">
+        {successMessage && (
+          <div className="success-message" style={{
+            background: '#27ae60',
+            color: '#fff',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            textAlign: 'center'
+          }}>
+            {successMessage}
+          </div>
+        )}
         {error && (
           <div className="error-message">
             <p>Error loading products:</p>
