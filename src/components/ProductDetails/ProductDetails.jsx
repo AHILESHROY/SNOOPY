@@ -26,7 +26,15 @@ const ProductDetails = ({ product, onClose }) => {
     const calculateDeal = async () => {
       setIsCalculatingDeal(true);
       try {
-        const dealData = await calculateHolisticDealScore(product);
+        const dealData = await calculateHolisticDealScore({
+          ...product,
+          currentPrice: product.price, // Explicitly set currentPrice
+          originalPrice: product.originalPrice, // Explicitly set originalPrice
+          priceHistory: product.priceHistory,
+          rating: product.rating,
+          ratingCount: product.ratingCount,
+          competitorPrices: product.competitorPrices || []
+        });
         setDealValue(dealData.score);
       } catch (error) {
         console.error('Error calculating deal score:', error);
@@ -210,7 +218,6 @@ const ProductDetails = ({ product, onClose }) => {
                     >
                       Buy Now
                     </a>
-                   
                   </div>
                 </div>
               </div>
@@ -238,4 +245,4 @@ ProductDetails.propTypes = {
   onClose: PropTypes.func.isRequired
 };
 
-export default ProductDetails; 
+export default ProductDetails;
