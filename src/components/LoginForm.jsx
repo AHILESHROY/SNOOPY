@@ -24,21 +24,7 @@ const SnoopyAuth = () => {
   useEffect(() => {
     const generateCarts = () => {
       let cartElements = [];
-      for (let i = 0; i < 20; i++) {
-        cartElements.push({
-          id: i,
-          left: Math.random() * 100 + "vw",
-          animationDuration: Math.random() * 3 + 2 + "s",
-          animationDelay: Math.random() * 2 + "s",
-        });
-      }
-      setCarts(cartElements);
-    };
-
-    generateCarts();
-  }, []);
-
-  const memoizedCarts = useMemo(() => carts, [carts]);
+      for (let i = 0; i  carts, [carts]);
 
   useEffect(() => {
     let strength = 0;
@@ -47,11 +33,9 @@ const SnoopyAuth = () => {
     if (/[0-9]/.test(formData.password)) strength++;
     if (/[^A-Za-z0-9]/.test(formData.password)) strength++;
     setPasswordStrength(Math.min(strength, 4));
-    console.log("Password Strength:", strength);
   }, [formData.password]);
 
   useEffect(() => {
-    console.log("Error state updated:", error);
   }, [error]);
 
   const handleChange = (e) => {
@@ -65,10 +49,8 @@ const SnoopyAuth = () => {
       setIsLoading(true);
       setError("");
       setSuccess("");
-      console.log("Initiating Google Sign-In...");
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      console.log("Google Sign-In successful:", user);
 
       const userInfo = {
         name: user.displayName || "Google User",
@@ -103,38 +85,7 @@ const SnoopyAuth = () => {
       return;
     }
 
-    if (passwordStrength < 1) {
-      setError("Password must be at least 8 characters long!");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError("");
-      setSuccess("");
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
-      console.log("Firebase sign-up successful:", user);
-
-      const userInfo = {
-        name: formData.name || user.email.split('@')[0],
-        email: user.email,
-        firebase_uid: user.uid
-      };
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      localStorage.setItem('userEmail', user.email);
-
-      try {
-        const trackedResponse = await axios.post(`${API_BASE_URL}/tracked_objects`, {
-          email: user.email
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (trackedResponse.data && Array.isArray(trackedResponse.data.user_budgets)) {
-          const transformedProducts = trackedResponse.data.user_budgets.map(item => ({
+    if (passwordStrength  ({
             id: item.id || item._id,
             name: item.name || item.product_name,
             price: item.current_price,
@@ -182,10 +133,8 @@ const SnoopyAuth = () => {
       setIsLoading(true);
       setError("");
       setSuccess("");
-      console.log("Attempting to sign in with email:", formData.email);
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
-      console.log("Firebase login successful:", user);
 
       const userInfo = {
         name: user.displayName || formData.email.split('@')[0],
@@ -200,7 +149,6 @@ const SnoopyAuth = () => {
       setTimeout(() => navigate("/home"), 500);
     } catch (err) {
       console.error("Sign-in error:", err);
-      console.log("Error code:", err.code);
       const errorMessages = {
         "auth/user-not-found": "No user found with this email.",
         "auth/wrong-password": "Incorrect password.",
@@ -209,14 +157,12 @@ const SnoopyAuth = () => {
       };
       const errorMessage = errorMessages[err.code] || "Failed to sign in: " + err.message;
       setError(errorMessage);
-      console.log("Error message set to:", errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handlePasswordReset = async () => {
-    console.log("handlePasswordReset called with email:", formData.email);
     if (!formData.email) {
       setError("Please enter your email address to reset your password.");
       return;
@@ -246,207 +192,137 @@ const SnoopyAuth = () => {
   };
 
   return (
-    <div className={`container ${isSignUp ? "active" : ""}`} id="container">
-      <div className="cart-rain-container">
+    
+      
         {memoizedCarts.map((cart) => (
-          <i
-            key={cart.id}
-            className="fa-solid fa-cart-shopping cart"
-            style={{
-              left: cart.left,
-              animationDuration: cart.animationDuration,
-              animationDelay: cart.animationDelay,
-              animationPlayState: isLoading ? 'paused' : 'running',
-            }}
-          ></i>
+          
         ))}
-      </div>
+      
 
-      <div className="form-container sign-up">
-        <form onSubmit={handleSignUp} noValidate>
-          <h1 className="Create_Account">Create Account</h1>
-          <div className="social-icons">
-            <a href="javascript:void(0)" className="icon" onClick={handleGoogleSignIn}>
-              <i className="fa-brands fa-google-plus-g"></i>
-            </a>
-          </div>
-          <span>or use your email for registration</span>
-          <div className="input-wrapper">
-            <input
-              type="text"
-              name="name"
-              placeholder="Name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div className="input-wrapper">
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              disabled={isLoading}
-            />
+      
+        
+          Create Account
+          
+            
+              
+            
+          
+          or use your email for registration
+          
+            
+          
+          
+            
             {error && error.includes("email") && (
-              <span className="error-tooltip">{error}</span>
+              {error}
             )}
-          </div>
-          <div className="input-wrapper">
-            <div className="password-container">
-              <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                minLength={8}
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                className="toggle-password"
-                onClick={() => setShowPassword(!showPassword)}
+          
+          
+            
+              
+               setShowPassword(!showPassword)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 disabled={isLoading}
               >
-                <i className={`fa-solid ${showPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
-              </button>
-            </div>
+                
+              
+            
             {error && error.includes("Password must be at least 8 characters long") && (
-              <span className="error-tooltip">{error}</span>
+              {error}
             )}
-          </div>
-          <div className="strength-meter">
-            <div
-              className={`strength-bar ${getStrengthClass(passwordStrength)}`}
-              style={{ width: `${(passwordStrength / 4) * 100}%` }}
-            ></div>
-          </div>
+          
+          
+            
+          
           {formData.password && (
-            <div className="strength-label">
+            
               Strength: {["Weak", "Fair", "Good", "Strong", "Very Strong"][passwordStrength]}
-            </div>
+            
           )}
-          <div className="input-wrapper">
-            <div className="password-container">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                name="confirmPassword"
-                placeholder="Confirm Password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                className="toggle-password"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          
+            
+              
+               setShowConfirmPassword(!showConfirmPassword)}
                 aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                 disabled={isLoading}
               >
-                <i className={`fa-solid ${showConfirmPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
-              </button>
-            </div>
+                
+              
+            
             {error && error.includes("Passwords don't match") && (
-              <span className="error-tooltip">{error}</span>
+              {error}
             )}
-          </div>
-          <button type="submit" disabled={isLoading}>
+          
+          
             {isLoading ? "Signing Up..." : "Sign Up"}
-          </button>
-        </form>
-      </div>
+          
+        
+      
 
-      <div className="form-container sign-in">
-        <form onSubmit={handleSignIn} noValidate>
-          <h1>Sign In</h1>
-          <div className="social-icons">
-            <a href="javascript:void(0)" className="icon" onClick={handleGoogleSignIn}>
-              <i className="fa-brands fa-google-plus-g"></i>
-            </a>
-          </div>
-          <span>or use your email password</span>
-          <div className="input-wrapper">
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              disabled={isLoading}
-            />
+      
+        
+          Sign In
+          
+            
+              
+            
+          
+          or use your email password
+          
+            
             {error && (error.includes("email") || error.includes("No user found")) && (
-              <span className="error-tooltip">{error}</span>
+              {error}
             )}
-          </div>
-          <div className="input-wrapper">
-            <div className="password-container">
-              <input
-                type={showSignInPassword ? "text" : "password"}
-                name="password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                className="toggle-password"
-                onClick={() => setShowSignInPassword(!showSignInPassword)}
+          
+          
+            
+              
+               setShowSignInPassword(!showSignInPassword)}
                 aria-label={showSignInPassword ? "Hide password" : "Show password"}
                 disabled={isLoading}
               >
-                <i className={`fa-solid ${showSignInPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
-              </button>
-            </div>
+                
+              
+            
             {error && (
-              <span className="error-tooltip">{error}</span>
+              {error}
             )}
-          </div>
-          <button type="button" className="forgot-password" onClick={handlePasswordReset} disabled={isLoading}>
+          
+          
             Forgot Your Password?
-          </button>
-          <button type="submit" disabled={isLoading}>
+          
+          
             {isLoading ? "Signing In..." : "Sign In"}
-          </button>
-        </form>
-      </div>
+          
+        
+      
 
-      <div className="toggle-container">
-        <div className="toggle">
-          <div className="toggle-panel toggle-left">
-            <h1>SNOOPY</h1>
-            <h2>LETS GET STARTED</h2>
-            <p>Enter your personal details to use all site features</p>
-            <button className="hidden" onClick={() => setIsSignUp(false)} disabled={isLoading}>
+      
+        
+          
+            SNOOPY
+            LETS GET STARTED
+            Enter your personal details to use all site features
+             setIsSignUp(false)} disabled={isLoading}>
               Sign In
-            </button>
-          </div>
-          <div className="toggle-panel toggle-right">
-            <h1>WELCOME BACK!</h1>
-            <p>Register with your personal details to use all site features</p>
-            <button className="hidden" onClick={() => setIsSignUp(true)} disabled={isLoading}>
+            
+          
+          
+            WELCOME BACK!
+            Register with your personal details to use all site features
+             setIsSignUp(true)} disabled={isLoading}>
               Sign Up
-            </button>
-          </div>
-        </div>
-      </div>
+            
+          
+        
+      
 
       {success && (
-        <div className="toast-notification success">
+        
           {success}
-        </div>
+        
       )}
-    </div>
+    
   );
 };
 
